@@ -1,6 +1,7 @@
 import wave
 import array
-from collections import defaultdict
+import numpy as np
+from scipy import signal
 import os
 import tempfile
 from pydub import AudioSegment
@@ -9,8 +10,6 @@ def convert_to_wav(input_file):
     """Convert any audio file to WAV format using pydub."""
     try:
         audio = AudioSegment.from_file(input_file)
-
-        # Create temporary WAV file
         temp_wav = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
         audio.export(temp_wav.name, format='wav')
         return temp_wav.name
@@ -25,14 +24,74 @@ def read_wav(filename):
             n_frames = wf.getnframes()
             sample_rate = wf.getframerate()
             samples = array.array('h', wf.readframes(n_frames))
-            return samples, sample_rate
+            return np.array(samples, dtype=np.float32), sample_rate
     except Exception as e:
         print(f"Error reading file: {e}")
         return None, None
 
+def onset_strength(samples, sample_rate):
+    """Calculate onset strength envelope."""
+    # Compute spectrogram
+    hop_length = int(sample_rate * 0.01)  # 10ms hop
+    n_fft = 2048
+
+    # Calculate STFT
+    f, t, spec = signal.stft(samples, 
+                            fs=sample_rate,
+                            nperseg=n_fft,
+                            noverlap=n_fft-hop_length)
+
+    # Convert to power spectrogram
+    spec = np.abs(spec)**2
+
+    # Calculate onset envelope
+    onset_env = np.zeros(spec.shape[1])
+    for i in range(1, spec.shape[1]):
+        # Spectral flux
+        diff = spec[:, i] - spec[:, i-1]
+        onset_env[i] = np.sum(diff[diff > 0])
+
+    return onset_env, hop_length
+
+def detect_tempo(onset_env, hop_length, sample_rate):
+    """Estimate tempo using autocorrelation."""
+    # Normalize onset envelope
+    onset_env = onset_env - onset_env.mean()
+    onset_env = onset_env / onset_env.std()
+
+    # Calculate autocorrelation
+    ac = signal.correlate(onset_env, onset_env, mode='full')
+    ac = ac[len(ac)//2:]
+
+    # Convert lag to BPM
+    bpms = 60 * sample_rate / (np.arange(1, len(ac)) * hop_length)
+
+    # Find peaks in autocorrelation
+    peaks = signal.find_peaks(ac, distance=int(sample_rate * 0.5 / hop_length))[0]
+    if len(peaks) == 0:
+        return None
+
+    # Filter peaks to reasonable BPM range
+    valid_peaks = [(i, bpms[i]) for i in peaks if 60 <= bpms[i] <= 200]
+    if not valid_peaks:
+        return None
+
+    # Weight peaks by their correlation value and tempo reasonableness
+    peak_weights = []
+    for i, bpm in valid_peaks:
+        # Weight by correlation strength
+        correlation_weight = ac[i]
+        # Weight by tempo likelihood (prefer 120-130 BPM range)
+        tempo_weight = 1.0 - min(abs(bpm - 125) / 65, 1.0)
+        peak_weights.append(correlation_weight * tempo_weight)
+
+    # Return BPM with highest weight
+    best_peak_idx = np.argmax(peak_weights)
+    return round(valid_peaks[best_peak_idx][1])
+
 def detect_bpm(filename):
     """Detect BPM from any audio file."""
-    # Convert to WAV if not already WAV
+    # Convert to WAV if needed
     temp_wav = None
     if not filename.lower().endswith('.wav'):
         temp_wav = convert_to_wav(filename)
@@ -41,71 +100,28 @@ def detect_bpm(filename):
         filename = temp_wav
 
     try:
+        # Read audio file
         samples, sample_rate = read_wav(filename)
-        if not samples:
+        if samples is None:
             return None
 
-        # Work with mono audio for consistency
-        if len(samples) % 2 == 0:  # Stereo to mono conversion
-            samples = array.array('h', [sum(samples[i:i+2])//2 for i in range(0, len(samples), 2)])
+        # Convert stereo to mono if needed
+        if len(samples) % 2 == 0:
+            samples = np.mean(samples.reshape(-1, 2), axis=1)
 
-        # Analyze first 30 seconds only
-        samples = samples[:min(len(samples), sample_rate * 30)]
+        # Normalize audio
+        samples = samples / np.abs(samples).max()
 
-        # Normalize samples
-        max_amplitude = max(abs(min(samples)), abs(max(samples)))
-        if max_amplitude == 0:
-            return None
+        # Calculate onset strength
+        onset_env, hop_length = onset_strength(samples, sample_rate)
 
-        # Calculate energy in small windows
-        window_size = int(0.02 * sample_rate)  # 20ms windows
-        hop_size = window_size // 2  # 50% overlap
-        energies = []
-
-        for i in range(0, len(samples) - window_size, hop_size):
-            window = samples[i:i + window_size]
-            energy = sum(abs(s) for s in window) / window_size
-            energies.append(energy)
-
-        # Find peaks (beats)
-        peaks = []
-        min_distance = int(0.2 * sample_rate / hop_size)  # Minimum 0.2s between beats
-
-        # Calculate dynamic threshold
-        avg_energy = sum(energies) / len(energies)
-        threshold = avg_energy * 1.3
-
-        for i in range(3, len(energies) - 3):
-            if energies[i] > threshold:
-                if energies[i] == max(energies[i-3:i+4]):  # Local maximum
-                    if not peaks or i - peaks[-1] >= min_distance:
-                        peaks.append(i)
-
-        if len(peaks) < 6:  # Need enough beats for reliable detection
-            return None
-
-        # Calculate intervals between consecutive peaks
-        intervals = []
-        for i in range(1, len(peaks)):
-            interval = (peaks[i] - peaks[i-1]) * hop_size / sample_rate
-            if 0.2 <= interval <= 1.0:  # Accept intervals for 60-300 BPM
-                intervals.append(interval)
-
-        if not intervals:
-            return None
-
-        # Calculate average interval and convert to BPM
-        avg_interval = sorted(intervals)[len(intervals)//2]  # Use median for robustness
-        bpm = int(round(60 / avg_interval))
-
-        # Validate BPM is in reasonable range
-        if not (60 <= bpm <= 200):
-            return None
+        # Detect tempo
+        bpm = detect_tempo(onset_env, hop_length, sample_rate)
 
         return bpm
 
     finally:
-        # Clean up temporary file if created
+        # Clean up temporary file
         if temp_wav and os.path.exists(temp_wav):
             os.unlink(temp_wav)
 
