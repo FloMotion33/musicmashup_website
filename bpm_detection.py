@@ -56,67 +56,78 @@ def detect_bpm(filename):
         chunk_size = int(duration * sample_rate)
         samples = samples[:chunk_size]
 
-        # Calculate energy in small windows with overlap
+        # Design bandpass filter for beat frequency range (20-200 Hz)
+        nyquist = sample_rate / 2
+        low = 20 / nyquist
+        high = 200 / nyquist
+        b, a = signal.butter(4, [low, high], btype='band')
+        filtered = signal.filtfilt(b, a, samples)
+
+        # Calculate RMS energy in overlapping windows
         window_size = int(0.02 * sample_rate)  # 20ms windows
-        hop_size = window_size // 2  # 50% overlap
-        energies = []
+        hop_size = window_size // 4  # 75% overlap for better precision
+        num_windows = (len(filtered) - window_size) // hop_size + 1
+        energies = np.zeros(num_windows)
 
-        for i in range(0, len(samples) - window_size, hop_size):
-            window = samples[i:i + window_size]
-            energy = np.sum(np.abs(window))
-            energies.append(energy)
+        for i in range(num_windows):
+            start = i * hop_size
+            window = filtered[start:start + window_size]
+            energies[i] = np.sqrt(np.mean(window ** 2))
 
-        # Normalize energies and apply low-pass filter
-        energies = np.array(energies)
-        energies = signal.savgol_filter(energies, 5, 2)  # Smooth energy curve
-        energies = (energies - energies.mean()) / energies.std()
+        # Smooth energy curve
+        energies = signal.savgol_filter(energies, 7, 3)
 
-        # Find peaks with dynamic thresholding
+        # Find peaks with adaptive thresholding
         peaks = []
-        min_distance = int(0.25 * sample_rate / hop_size)  # Minimum 0.25s between beats
-        max_distance = int(1.2 * sample_rate / hop_size)   # Maximum 1.2s between beats
+        window_length = int(2 * sample_rate / hop_size)  # 2-second window for local stats
 
-        # Use adaptive thresholding
-        for i in range(3, len(energies) - 3):
-            # Look at local window for thresholding
-            local_window = energies[max(0, i-10):min(len(energies), i+10)]
-            threshold = np.mean(local_window) + 0.5 * np.std(local_window)
+        for i in range(window_length, len(energies) - window_length):
+            local_window = energies[i - window_length:i + window_length]
+            local_mean = np.mean(local_window)
+            local_std = np.std(local_window)
+            threshold = local_mean + 0.5 * local_std
 
             if energies[i] > threshold:
-                # Ensure it's a clear peak
-                if energies[i] > energies[i-1] and energies[i] > energies[i+1]:
-                    if not peaks or min_distance <= (i - peaks[-1]) <= max_distance:
-                        peaks.append(i)
+                if energies[i] == max(energies[max(0, i-3):min(len(energies), i+4)]):
+                    peaks.append(i)
 
-        if len(peaks) < 6:  # Need enough beats for reliable detection
+        # Calculate intervals between peaks
+        intervals = np.diff(peaks) * hop_size / sample_rate
+
+        # Filter out intervals that would give unreasonable BPMs
+        valid_intervals = intervals[(intervals >= 60/200) & (intervals <= 60/60)]
+
+        if len(valid_intervals) < 6:  # Need enough intervals for accurate detection
             return None
 
-        # Calculate intervals between consecutive peaks
-        intervals = []
-        for i in range(1, len(peaks)):
-            interval = (peaks[i] - peaks[i-1]) * hop_size / sample_rate
-            # Only accept intervals that would result in 60-180 BPM
-            if 60 <= (60 / interval) <= 180:
-                intervals.append(interval)
+        # Use autocorrelation to find the dominant period
+        correlation = np.correlate(energies, energies, mode='full')
+        correlation = correlation[len(correlation)//2:]
 
-        if len(intervals) < 4:  # Need enough valid intervals
+        # Find peaks in correlation
+        corr_peaks = signal.find_peaks(correlation)[0]
+        if len(corr_peaks) < 2:
             return None
 
-        # Use median filtering to remove outliers
-        intervals = np.array(intervals)
-        median_interval = np.median(intervals)
+        # Convert peak positions to BPM
+        bpms = 60 * sample_rate / (corr_peaks * hop_size)
+        valid_bpms = bpms[(bpms >= 60) & (bpms <= 200)]
 
-        # Only use intervals close to the median
-        valid_intervals = intervals[np.abs(intervals - median_interval) < 0.1]
-
-        if len(valid_intervals) < 3:
+        if len(valid_bpms) == 0:
             return None
 
-        # Calculate BPM from average interval
-        bpm = 60.0 / np.mean(valid_intervals)
+        # Calculate the final BPM using both interval and correlation analysis
+        interval_bpm = 60 / np.median(valid_intervals)
+        corr_bpm = valid_bpms[0]
 
-        # Final validation of BPM range
-        if not (60 <= bpm <= 180):
+        # Use the correlation-based BPM if it's close to the interval-based BPM
+        if abs(interval_bpm - corr_bpm) < 5:
+            bpm = (interval_bpm + corr_bpm) / 2
+        else:
+            bpm = interval_bpm
+
+        # Ensure the BPM is in a reasonable range
+        if not (60 <= bpm <= 200):
             return None
 
         return round(bpm, 1)
