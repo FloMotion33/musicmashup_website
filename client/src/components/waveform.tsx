@@ -17,19 +17,21 @@ export default function Waveform({ audioFile }: WaveformProps) {
     if (waveformRef.current) {
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
-        waveColor: 'hsl(var(--primary) / 0.8)',
-        progressColor: 'hsl(var(--primary))',
-        cursorColor: 'hsl(var(--primary))',
+        waveColor: 'hsl(250 95% 60% / 0.6)', 
+        progressColor: 'hsl(250 95% 60%)', 
+        cursorColor: 'hsl(250 95% 60%)',
         height: 120,
         normalize: true,
-        minPxPerSec: 20, // Lower value to show more of the song
+        minPxPerSec: 1, 
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
         cursorWidth: 2,
         fillParent: true,
-        autoCenter: false, // Disable auto-centering to show full song
+        autoCenter: false, 
         interact: true,
+        responsive: true,
+        pixelRatio: 1, 
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);

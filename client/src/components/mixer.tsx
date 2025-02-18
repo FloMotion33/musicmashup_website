@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { type AudioFile } from "@shared/schema";
@@ -62,15 +62,18 @@ export default function Mixer({ audioFiles }: MixerProps) {
     }
   });
 
-  const updateVolume = (fileId: number, value: number) => {
-    setVolumes(prev => ({...prev, [fileId]: value}));
-  };
+  const updateVolume = useCallback((fileId: number, value: number) => {
+    setVolumes(prev => {
+      const newVolumes = { ...prev, [fileId]: value };
+      return newVolumes;
+    });
+  }, []);
 
   return (
     <div className="space-y-6 mt-6">
       <div className="grid gap-4">
         {audioFiles.map((file) => (
-          <div key={file.id} className="bg-card p-4 rounded-lg space-y-2">
+          <div key={file.id} className="bg-card p-4 rounded-lg space-y-2 border">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium text-sm">{file.filename}</span>
               <span className="text-sm text-muted-foreground">
@@ -78,10 +81,13 @@ export default function Mixer({ audioFiles }: MixerProps) {
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <VolumeX className={cn(
-                "h-4 w-4 transition-opacity",
-                volumes[file.id] === 0 ? "opacity-100" : "opacity-50"
-              )} />
+              <VolumeX 
+                className={cn(
+                  "h-4 w-4 transition-opacity cursor-pointer",
+                  volumes[file.id] === 0 ? "opacity-100" : "opacity-50"
+                )}
+                onClick={() => updateVolume(file.id, 0)}
+              />
               <Slider
                 value={[volumes[file.id] * 100]}
                 onValueChange={(value) => {
@@ -91,10 +97,13 @@ export default function Mixer({ audioFiles }: MixerProps) {
                 step={1}
                 className="flex-1"
               />
-              <Volume2 className={cn(
-                "h-4 w-4 transition-opacity",
-                volumes[file.id] === 1 ? "opacity-100" : "opacity-50"
-              )} />
+              <Volume2 
+                className={cn(
+                  "h-4 w-4 transition-opacity cursor-pointer",
+                  volumes[file.id] === 1 ? "opacity-100" : "opacity-50"
+                )}
+                onClick={() => updateVolume(file.id, 1)}
+              />
             </div>
           </div>
         ))}
