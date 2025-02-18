@@ -20,45 +20,73 @@ def detect_bpm(filename):
         return None
 
     # Work with a subset of samples for faster processing
-    chunk_size = min(len(samples), sample_rate * 30)  # 30 seconds max
+    duration = min(len(samples) / sample_rate, 60)  # Analyze up to 60 seconds
+    chunk_size = int(duration * sample_rate)
     samples = samples[:chunk_size]
 
-    # Find peaks in amplitude
-    threshold = 0.6 * max(abs(x) for x in samples)
+    # Normalize samples
+    max_sample = max(abs(min(samples)), abs(max(samples)))
+    if max_sample == 0:
+        return None
+    samples = [s / max_sample for s in samples]
+
+    # Split audio into chunks and calculate energy
+    chunk_duration = 0.02  # 20ms chunks
+    chunk_samples = int(chunk_duration * sample_rate)
+    num_chunks = len(samples) // chunk_samples
+
+    # Calculate energy for each chunk
+    energies = []
+    for i in range(num_chunks):
+        chunk = samples[i * chunk_samples:(i + 1) * chunk_samples]
+        energy = sum(abs(s) for s in chunk)
+        energies.append(energy)
+
+    # Find peaks in energy
     peaks = []
-    was_peak = False
+    window = 5  # Look at nearby chunks
+    threshold = 1.3  # Energy must be this times higher than average
 
-    for i in range(1, len(samples) - 1):
-        if abs(samples[i]) > threshold:
-            if not was_peak and abs(samples[i]) > abs(samples[i-1]):
+    for i in range(window, len(energies) - window):
+        center = energies[i]
+        window_energies = energies[i - window:i + window]
+        avg_energy = sum(window_energies) / len(window_energies)
+
+        if center > threshold * avg_energy:
+            # Check if it's a local maximum
+            if center == max(window_energies):
                 peaks.append(i)
-                was_peak = True
-        else:
-            was_peak = False
 
-    if not peaks:
+    if len(peaks) < 4:  # Need at least 4 peaks for reliable BPM detection
         return None
 
     # Calculate intervals between peaks
     intervals = defaultdict(int)
     for i in range(1, len(peaks)):
-        interval = (peaks[i] - peaks[i-1]) / sample_rate
-        if 0.2 < interval < 2.0:  # Accept intervals corresponding to 30-300 BPM
-            # Round to nearest 0.05 seconds to group similar intervals
-            rounded = round(interval * 20) / 20
+        interval = (peaks[i] - peaks[i-1]) * chunk_duration
+        if 0.2 < interval < 2.0:  # Accept intervals for 30-300 BPM
+            # Round to nearest 0.01 seconds
+            rounded = round(interval * 100) / 100
             intervals[rounded] += 1
 
     if not intervals:
         return None
 
-    # Find most common interval
-    most_common = max(intervals.items(), key=lambda x: x[1])[0]
-    bpm = round(60 / most_common)
+    # Find most common interval considering harmonics
+    potential_bpms = []
+    for interval, count in intervals.items():
+        bpm = 60 / interval
+        # Consider potential harmonics/sub-harmonics
+        for factor in [0.5, 1, 2]:
+            adjusted_bpm = bpm * factor
+            if 50 <= adjusted_bpm <= 200:  # Most common BPM range
+                potential_bpms.append((adjusted_bpm, count))
 
-    # Constrain BPM to reasonable range
-    if not (30 <= bpm <= 300):
+    if not potential_bpms:
         return None
 
+    # Take the most common BPM
+    bpm = round(max(potential_bpms, key=lambda x: x[1])[0])
     return bpm
 
 if __name__ == "__main__":
