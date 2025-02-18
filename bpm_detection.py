@@ -1,6 +1,5 @@
 import wave
 import array
-import math
 from collections import defaultdict
 
 def read_wav(filename):
@@ -19,74 +18,54 @@ def detect_bpm(filename):
     if not samples:
         return None
 
-    # Work with a subset of samples for faster processing
-    duration = min(len(samples) / sample_rate, 60)  # Analyze up to 60 seconds
-    chunk_size = int(duration * sample_rate)
-    samples = samples[:chunk_size]
+    # Analyze first 30 seconds only
+    samples = samples[:min(len(samples), sample_rate * 30)]
 
     # Normalize samples
-    max_sample = max(abs(min(samples)), abs(max(samples)))
-    if max_sample == 0:
+    max_amplitude = max(abs(min(samples)), abs(max(samples)))
+    if max_amplitude == 0:
         return None
-    samples = [s / max_sample for s in samples]
 
-    # Split audio into chunks and calculate energy
-    chunk_duration = 0.02  # 20ms chunks
-    chunk_samples = int(chunk_duration * sample_rate)
-    num_chunks = len(samples) // chunk_samples
-
-    # Calculate energy for each chunk
+    # Calculate energy in small windows
+    window_size = int(0.05 * sample_rate)  # 50ms windows
     energies = []
-    for i in range(num_chunks):
-        chunk = samples[i * chunk_samples:(i + 1) * chunk_samples]
-        energy = sum(abs(s) for s in chunk)
+
+    for i in range(0, len(samples) - window_size, window_size):
+        window = samples[i:i + window_size]
+        energy = sum(abs(s) for s in window)
         energies.append(energy)
 
-    # Find peaks in energy
+    # Find peaks (beats)
     peaks = []
-    window = 5  # Look at nearby chunks
-    threshold = 1.3  # Energy must be this times higher than average
+    min_distance = int(0.2 * sample_rate / window_size)  # Minimum 0.2s between beats
 
-    for i in range(window, len(energies) - window):
-        center = energies[i]
-        window_energies = energies[i - window:i + window]
-        avg_energy = sum(window_energies) / len(window_energies)
+    for i in range(2, len(energies) - 2):
+        if energies[i] > energies[i-1] and energies[i] > energies[i+1]:
+            if energies[i] > 1.2 * sum(energies[i-2:i+3]) / 5:  # Local energy spike
+                if not peaks or i - peaks[-1] >= min_distance:
+                    peaks.append(i)
 
-        if center > threshold * avg_energy:
-            # Check if it's a local maximum
-            if center == max(window_energies):
-                peaks.append(i)
-
-    if len(peaks) < 4:  # Need at least 4 peaks for reliable BPM detection
+    if len(peaks) < 4:  # Need at least 4 beats for reliable detection
         return None
 
-    # Calculate intervals between peaks
-    intervals = defaultdict(int)
+    # Calculate time between peaks
+    intervals = []
     for i in range(1, len(peaks)):
-        interval = (peaks[i] - peaks[i-1]) * chunk_duration
-        if 0.2 < interval < 2.0:  # Accept intervals for 30-300 BPM
-            # Round to nearest 0.01 seconds
-            rounded = round(interval * 100) / 100
-            intervals[rounded] += 1
+        interval = (peaks[i] - peaks[i-1]) * window_size / sample_rate
+        if 0.2 <= interval <= 1.5:  # Accept intervals for 40-300 BPM
+            intervals.append(interval)
 
     if not intervals:
         return None
 
-    # Find most common interval considering harmonics
-    potential_bpms = []
-    for interval, count in intervals.items():
-        bpm = 60 / interval
-        # Consider potential harmonics/sub-harmonics
-        for factor in [0.5, 1, 2]:
-            adjusted_bpm = bpm * factor
-            if 50 <= adjusted_bpm <= 200:  # Most common BPM range
-                potential_bpms.append((adjusted_bpm, count))
+    # Calculate average interval and convert to BPM
+    avg_interval = sum(intervals) / len(intervals)
+    bpm = int(round(60 / avg_interval))
 
-    if not potential_bpms:
+    # Validate BPM is in reasonable range
+    if not (60 <= bpm <= 200):
         return None
 
-    # Take the most common BPM
-    bpm = round(max(potential_bpms, key=lambda x: x[1])[0])
     return bpm
 
 if __name__ == "__main__":
