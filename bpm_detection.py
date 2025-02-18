@@ -1,70 +1,74 @@
-import numpy as np
 import wave
 import array
-from scipy import signal
-import pywt
+import math
+from collections import defaultdict
 
-def lees_wav(bestandsnaam):
+def read_wav(filename):
     try:
-        with wave.open(bestandsnaam, 'rb') as wf:
-            n_samples = wf.getnframes()
+        with wave.open(filename, 'rb') as wf:
+            n_frames = wf.getnframes()
             sample_rate = wf.getframerate()
-            samples = array.array('i', wf.readframes(n_samples))
-            return np.array(samples), sample_rate
+            samples = array.array('h', wf.readframes(n_frames))
+            return samples, sample_rate
     except Exception as e:
         print(f"Error reading file: {e}")
         return None, None
 
-def detecteer_piek(data):
-    max_val = np.amax(abs(data))
-    piek_idx = np.where(data == max_val)[0]
-    if len(piek_idx) == 0:
-        piek_idx = np.where(data == -max_val)[0]
-    return piek_idx
-
-def bereken_bpm(bestandsnaam):
-    samples, sample_rate = lees_wav(bestandsnaam)
-    if samples is None:
+def detect_bpm(filename):
+    samples, sample_rate = read_wav(filename)
+    if not samples:
         return None
-    
-    levels = 4
-    max_decimation = 2**(levels-1)
-    min_idx = int(60.0 / 220 * (sample_rate/max_decimation))
-    max_idx = int(60.0 / 40 * (sample_rate/max_decimation))
 
-    cD_sum = None
-    cA = samples
-    
-    for level in range(levels):
-        cA, cD = pywt.dwt(cA, 'db4')
-        if level == 0:
-            cD_sum = np.zeros(len(cD) // max_decimation + 1)
-        
-        cD = signal.lfilter([0.01], [1 - 0.99], cD)
-        cD = np.abs(cD[::2**(levels-level-1)])
-        cD = cD - np.mean(cD)
-        cD_sum[:len(cD)] += cD[:len(cD_sum)]
-    
-    correl = np.correlate(cD_sum, cD_sum, 'full')
-    correl = correl[len(correl)//2:]
-    
-    piek_idx = detecteer_piek(correl[min_idx:max_idx])
-    if len(piek_idx) == 0:
+    # Work with a subset of samples for faster processing
+    chunk_size = min(len(samples), sample_rate * 30)  # 30 seconds max
+    samples = samples[:chunk_size]
+
+    # Find peaks in amplitude
+    threshold = 0.6 * max(abs(x) for x in samples)
+    peaks = []
+    was_peak = False
+
+    for i in range(1, len(samples) - 1):
+        if abs(samples[i]) > threshold:
+            if not was_peak and abs(samples[i]) > abs(samples[i-1]):
+                peaks.append(i)
+                was_peak = True
+        else:
+            was_peak = False
+
+    if not peaks:
         return None
-        
-    piek_idx = piek_idx[0] + min_idx
-    bpm = 60.0 / piek_idx * (sample_rate/max_decimation)
-    
-    return round(bpm, 1)
+
+    # Calculate intervals between peaks
+    intervals = defaultdict(int)
+    for i in range(1, len(peaks)):
+        interval = (peaks[i] - peaks[i-1]) / sample_rate
+        if 0.2 < interval < 2.0:  # Accept intervals corresponding to 30-300 BPM
+            # Round to nearest 0.05 seconds to group similar intervals
+            rounded = round(interval * 20) / 20
+            intervals[rounded] += 1
+
+    if not intervals:
+        return None
+
+    # Find most common interval
+    most_common = max(intervals.items(), key=lambda x: x[1])[0]
+    bpm = round(60 / most_common)
+
+    # Constrain BPM to reasonable range
+    if not (30 <= bpm <= 300):
+        return None
+
+    return bpm
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) != 2:
         print("Usage: python bpm_detection.py <audio_file>")
         sys.exit(1)
-        
+
     audio_path = sys.argv[1]
-    bpm = bereken_bpm(audio_path)
+    bpm = detect_bpm(audio_path)
     if bpm is not None:
         print(bpm)
     else:

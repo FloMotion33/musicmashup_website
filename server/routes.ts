@@ -6,7 +6,6 @@ import { insertAudioFileSchema, insertMashupSchema } from "@shared/schema";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
-import { promises as fs } from "fs";
 
 const execAsync = promisify(exec);
 const upload = multer({ dest: "/tmp/uploads/" });
@@ -22,21 +21,29 @@ export async function registerRoutes(app: Express) {
 
       // Run BPM detection using the script in the project root
       const scriptPath = path.join(process.cwd(), "bpm_detection.py");
-      const { stdout } = await execAsync(`python3 "${scriptPath}" "${file.path}"`);
-      const bpm = parseInt(stdout.trim());
+      const { stdout, stderr } = await execAsync(`python3 "${scriptPath}" "${file.path}"`);
+
+      if (stderr) {
+        console.error("BPM detection error:", stderr);
+        throw new Error("BPM detection failed");
+      }
+
+      const bpm = parseInt(stdout.trim()) || null;
 
       // Save the audio file data
       const audioFile = await storage.saveAudioFile({
         filename: file.originalname,
         bpm,
         duration: 0, // TODO: Calculate duration
-        waveformData: [] // Empty for now
       });
 
       res.json(audioFile);
     } catch (err) {
       console.error("Upload error:", err);
-      res.status(500).json({ message: "Failed to process audio file" });
+      res.status(500).json({ 
+        message: "Failed to process audio file", 
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+      });
     }
   });
 
