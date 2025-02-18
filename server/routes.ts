@@ -19,16 +19,23 @@ export async function registerRoutes(app: Express) {
 
       const file = req.file;
 
-      // Run BPM detection using the script in the project root
+      // Run BPM detection using the script
       const scriptPath = path.join(process.cwd(), "bpm_detection.py");
       const { stdout, stderr } = await execAsync(`python3 "${scriptPath}" "${file.path}"`);
 
       if (stderr) {
         console.error("BPM detection error:", stderr);
-        throw new Error("BPM detection failed");
+        return res.status(500).json({ message: "BPM detection failed" });
       }
 
-      const bpm = parseInt(stdout.trim()) || null;
+      // Parse BPM from stdout, ensuring it's a valid number
+      let bpm: number | null = null;
+      const parsedBpm = parseFloat(stdout.trim());
+      if (!isNaN(parsedBpm)) {
+        bpm = parsedBpm;
+      }
+
+      console.log("Detected BPM:", bpm); // Add logging for debugging
 
       // Save the audio file data
       const audioFile = await storage.saveAudioFile({
@@ -42,7 +49,7 @@ export async function registerRoutes(app: Express) {
       console.error("Upload error:", err);
       res.status(500).json({ 
         message: "Failed to process audio file", 
-        details: process.env.NODE_ENV === 'development' ? err.message : undefined 
+        details: process.env.NODE_ENV === 'development' ? (err as Error).message : undefined 
       });
     }
   });
