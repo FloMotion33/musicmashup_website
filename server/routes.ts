@@ -7,7 +7,6 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import { promises as fs } from "fs";
-import { AudioSegment } from "pydub";
 
 const execAsync = promisify(exec);
 const upload = multer({ dest: "/tmp/uploads/" });
@@ -20,20 +19,23 @@ export async function registerRoutes(app: Express) {
       }
 
       const file = req.file;
-      
-      // Run BPM detection
-      const { stdout } = await execAsync(`python3 bpm_detection.py "${file.path}"`);
+
+      // Run BPM detection using the script in the project root
+      const scriptPath = path.join(process.cwd(), "bpm_detection.py");
+      const { stdout } = await execAsync(`python3 "${scriptPath}" "${file.path}"`);
       const bpm = parseInt(stdout.trim());
 
+      // Save the audio file data
       const audioFile = await storage.saveAudioFile({
         filename: file.originalname,
         bpm,
-        duration: 0 // TODO: Extract duration
+        duration: 0, // TODO: Calculate duration
+        waveformData: [] // Empty for now
       });
 
       res.json(audioFile);
     } catch (err) {
-      console.error(err);
+      console.error("Upload error:", err);
       res.status(500).json({ message: "Failed to process audio file" });
     }
   });

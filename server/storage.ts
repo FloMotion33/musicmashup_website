@@ -24,7 +24,13 @@ export class MemStorage implements IStorage {
 
   async saveAudioFile(file: InsertAudioFile): Promise<AudioFile> {
     const id = this.audioFileId++;
-    const audioFile = { ...file, id, waveformData: [] };
+    const audioFile: AudioFile = {
+      id,
+      filename: file.filename,
+      bpm: file.bpm || null,
+      duration: file.duration || null,
+      waveformData: []
+    };
     this.audioFiles.set(id, audioFile);
     return audioFile;
   }
@@ -35,7 +41,12 @@ export class MemStorage implements IStorage {
 
   async saveMashup(mashup: InsertMashup): Promise<Mashup> {
     const id = this.mashupId++;
-    const newMashup = { ...mashup, id };
+    const newMashup: Mashup = {
+      id,
+      name: mashup.name,
+      audioFileIds: mashup.audioFileIds || null,
+      mixSettings: mashup.mixSettings || null
+    };
     this.mashups.set(id, newMashup);
     return newMashup;
   }
