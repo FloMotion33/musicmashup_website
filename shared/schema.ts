@@ -5,6 +5,7 @@ import { z } from "zod";
 export const audioFiles = pgTable("audio_files", {
   id: serial("id").primaryKey(),
   filename: text("filename").notNull(),
+  filepath: text("filepath").notNull(),
   bpm: integer("bpm"),
   duration: integer("duration"),
   waveformData: jsonb("waveform_data").$type<number[]>(),

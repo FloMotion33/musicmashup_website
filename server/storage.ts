@@ -27,6 +27,7 @@ export class MemStorage implements IStorage {
     const audioFile: AudioFile = {
       id,
       filename: file.filename,
+      filepath: file.filepath,
       bpm: file.bpm || null,
       duration: file.duration || null,
       waveformData: []

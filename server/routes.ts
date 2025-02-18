@@ -6,6 +6,7 @@ import { insertAudioFileSchema, insertMashupSchema } from "@shared/schema";
 import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
+import fs from "fs";
 
 const execAsync = promisify(exec);
 const upload = multer({ dest: "/tmp/uploads/" });
@@ -42,6 +43,7 @@ export async function registerRoutes(app: Express) {
       // Save the audio file data
       const audioFile = await storage.saveAudioFile({
         filename: file.originalname,
+        filepath: file.path,
         bpm,
         duration: 0, // TODO: Calculate duration
       });
@@ -66,8 +68,38 @@ export async function registerRoutes(app: Express) {
     if (!file) {
       return res.status(404).json({ message: "Audio file not found" });
     }
-    // TODO: Implement audio file serving
-    res.json(file);
+
+    // Check if file exists
+    if (!fs.existsSync(file.filepath)) {
+      return res.status(404).json({ message: "Audio file not found on disk" });
+    }
+
+    // Stream the audio file
+    const stat = fs.statSync(file.filepath);
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0]);
+      const end = parts[1] ? parseInt(parts[1]) : stat.size - 1;
+      const chunksize = (end - start) + 1;
+      const stream = fs.createReadStream(file.filepath, { start, end });
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'audio/mpeg'
+      });
+
+      stream.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': stat.size,
+        'Content-Type': 'audio/mpeg'
+      });
+      fs.createReadStream(file.filepath).pipe(res);
+    }
   });
 
   app.post("/api/mashups", async (req, res) => {
