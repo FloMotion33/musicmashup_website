@@ -9,7 +9,7 @@ import { type AudioFile } from "@shared/schema";
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<AudioFile[]>([]);
-  
+
   const { data: audioFiles, isLoading } = useQuery({
     queryKey: ["/api/audio-files"]
   });
@@ -19,10 +19,10 @@ export default function Home() {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            Audio Mashup Creator
+            MusicMashup
           </h1>
           <p className="text-muted-foreground">
-            Upload audio files, detect BPM, and create unique mashups
+            Create unique mashups by mixing your favorite tracks
           </p>
         </div>
 
@@ -30,7 +30,7 @@ export default function Home() {
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
             <AudioUpload onUpload={(file) => setSelectedFiles([...selectedFiles, file])} />
-            
+
             {isLoading ? (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto" />

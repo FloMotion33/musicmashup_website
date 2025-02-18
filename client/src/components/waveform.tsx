@@ -22,13 +22,13 @@ export default function Waveform({ audioFile }: WaveformProps) {
         cursorColor: 'hsl(var(--primary))',
         height: 120,
         normalize: true,
-        minPxPerSec: 100, // Increased time scale for better visibility
-        barWidth: 3,
-        barGap: 2,
-        barRadius: 3,
+        minPxPerSec: 20, // Lower value to show more of the song
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
         cursorWidth: 2,
         fillParent: true,
-        autoCenter: true,
+        autoCenter: false, // Disable auto-centering to show full song
         interact: true,
       });
 
