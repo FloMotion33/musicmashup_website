@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { type AudioFile } from "@shared/schema";
 import { Button } from "@/components/ui/button";
