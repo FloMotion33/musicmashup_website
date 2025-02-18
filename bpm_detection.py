@@ -57,7 +57,7 @@ def detect_bpm(filename):
         samples = samples[:chunk_size]
 
         # Calculate energy in small windows with overlap
-        window_size = int(0.01 * sample_rate)  # 10ms windows
+        window_size = int(0.02 * sample_rate)  # 20ms windows
         hop_size = window_size // 2  # 50% overlap
         energies = []
 
@@ -66,51 +66,59 @@ def detect_bpm(filename):
             energy = np.sum(np.abs(window))
             energies.append(energy)
 
-        # Normalize energies
+        # Normalize energies and apply low-pass filter
         energies = np.array(energies)
+        energies = signal.savgol_filter(energies, 5, 2)  # Smooth energy curve
         energies = (energies - energies.mean()) / energies.std()
 
         # Find peaks with dynamic thresholding
-        window_size = 100  # Look at 0.5 second windows for local thresholds
         peaks = []
-        min_distance = int(0.2 * sample_rate / hop_size)  # Minimum 0.2s between beats
+        min_distance = int(0.25 * sample_rate / hop_size)  # Minimum 0.25s between beats
+        max_distance = int(1.2 * sample_rate / hop_size)   # Maximum 1.2s between beats
 
-        for i in range(window_size, len(energies) - window_size):
-            local_window = energies[i - window_size:i + window_size]
-            threshold = np.mean(local_window) + 0.75 * np.std(local_window)
+        # Use adaptive thresholding
+        for i in range(3, len(energies) - 3):
+            # Look at local window for thresholding
+            local_window = energies[max(0, i-10):min(len(energies), i+10)]
+            threshold = np.mean(local_window) + 0.5 * np.std(local_window)
 
             if energies[i] > threshold:
-                # Check if it's a local maximum
-                if energies[i] == max(energies[i-3:i+4]):
-                    if not peaks or i - peaks[-1] >= min_distance:
+                # Ensure it's a clear peak
+                if energies[i] > energies[i-1] and energies[i] > energies[i+1]:
+                    if not peaks or min_distance <= (i - peaks[-1]) <= max_distance:
                         peaks.append(i)
 
-        if len(peaks) < 4:  # Need enough beats for reliable detection
+        if len(peaks) < 6:  # Need enough beats for reliable detection
             return None
 
         # Calculate intervals between consecutive peaks
         intervals = []
         for i in range(1, len(peaks)):
             interval = (peaks[i] - peaks[i-1]) * hop_size / sample_rate
-            if 0.2 <= interval <= 1.5:  # Accept intervals for 40-300 BPM
+            # Only accept intervals that would result in 60-180 BPM
+            if 60 <= (60 / interval) <= 180:
                 intervals.append(interval)
 
-        if not intervals:
+        if len(intervals) < 4:  # Need enough valid intervals
             return None
 
-        # Calculate BPM using the most consistent intervals
+        # Use median filtering to remove outliers
         intervals = np.array(intervals)
         median_interval = np.median(intervals)
-        consistent_intervals = intervals[np.abs(intervals - median_interval) < 0.1]
 
-        if len(consistent_intervals) < 3:
+        # Only use intervals close to the median
+        valid_intervals = intervals[np.abs(intervals - median_interval) < 0.1]
+
+        if len(valid_intervals) < 3:
             return None
 
-        # Use the average of consistent intervals for precise BPM calculation
-        avg_interval = np.mean(consistent_intervals)
-        bpm = 60.0 / avg_interval
+        # Calculate BPM from average interval
+        bpm = 60.0 / np.mean(valid_intervals)
 
-        # Round to 1 decimal place for precision
+        # Final validation of BPM range
+        if not (60 <= bpm <= 180):
+            return None
+
         return round(bpm, 1)
 
     finally:
