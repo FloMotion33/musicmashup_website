@@ -19,8 +19,9 @@ export async function registerRoutes(app: Express) {
 
       const file = req.file;
 
-      // Run BPM detection using the script
+      // Run BPM detection
       const scriptPath = path.join(process.cwd(), "bpm_detection.py");
+      console.log("Running BPM detection on:", file.path);
       const { stdout, stderr } = await execAsync(`python3 "${scriptPath}" "${file.path}"`);
 
       if (stderr) {
@@ -28,14 +29,15 @@ export async function registerRoutes(app: Express) {
         return res.status(500).json({ message: "BPM detection failed" });
       }
 
-      // Parse BPM from stdout, ensuring it's a valid number
+      // Parse BPM from stdout
+      console.log("BPM detection output:", stdout);
       let bpm: number | null = null;
       const parsedBpm = parseFloat(stdout.trim());
       if (!isNaN(parsedBpm)) {
         bpm = parsedBpm;
       }
 
-      console.log("Detected BPM:", bpm); // Add logging for debugging
+      console.log("Final BPM value:", bpm);
 
       // Save the audio file data
       const audioFile = await storage.saveAudioFile({
@@ -57,6 +59,15 @@ export async function registerRoutes(app: Express) {
   app.get("/api/audio-files", async (req, res) => {
     const files = await storage.listAudioFiles();
     res.json(files);
+  });
+
+  app.get("/api/audio/:id", async (req, res) => {
+    const file = await storage.getAudioFile(parseInt(req.params.id));
+    if (!file) {
+      return res.status(404).json({ message: "Audio file not found" });
+    }
+    // TODO: Implement audio file serving
+    res.json(file);
   });
 
   app.post("/api/mashups", async (req, res) => {
