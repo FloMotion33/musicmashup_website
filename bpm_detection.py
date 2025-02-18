@@ -23,17 +23,17 @@ def read_wav(filename):
         with wave.open(filename, 'rb') as wf:
             n_frames = wf.getnframes()
             sample_rate = wf.getframerate()
-            samples = array.array('h', wf.readframes(n_frames))
-            return np.array(samples, dtype=np.float32), sample_rate
+            samples = array.array('i', wf.readframes(n_frames))
+            return np.array(samples), sample_rate
     except Exception as e:
         print(f"Error reading file: {e}")
         return None, None
 
 def onset_strength(samples, sample_rate):
     """Calculate onset strength envelope."""
-    # Compute spectrogram
-    hop_length = int(sample_rate * 0.01)  # 10ms hop
-    n_fft = 2048
+    # Compute spectrogram with higher resolution
+    hop_length = int(sample_rate * 0.005)  # 5ms hop for higher precision
+    n_fft = 4096  # Larger FFT window for better frequency resolution
 
     # Calculate STFT
     f, t, spec = signal.stft(samples, 
@@ -41,53 +41,62 @@ def onset_strength(samples, sample_rate):
                             nperseg=n_fft,
                             noverlap=n_fft-hop_length)
 
-    # Convert to power spectrogram
-    spec = np.abs(spec)**2
+    # Split into frequency bands
+    bands = [
+        (0, 200),    # Sub-bass
+        (200, 800),  # Bass
+        (800, 2000), # Low-mids
+        (2000, 8000) # High-mids and treble
+    ]
 
-    # Calculate onset envelope
-    onset_env = np.zeros(spec.shape[1])
-    for i in range(1, spec.shape[1]):
-        # Spectral flux
-        diff = spec[:, i] - spec[:, i-1]
-        onset_env[i] = np.sum(diff[diff > 0])
+    onset_bands = []
+    for low, high in bands:
+        # Find frequency bin indices for this band
+        band_mask = (f >= low) & (f <= high)
+        band_spec = spec[band_mask]
+
+        # Calculate onset envelope for this band
+        band_onset = np.zeros(spec.shape[1])
+        for i in range(1, spec.shape[1]):
+            # Spectral flux with logarithmic compression
+            diff = np.log1p(np.abs(band_spec[:, i])) - np.log1p(np.abs(band_spec[:, i-1]))
+            band_onset[i] = np.sum(diff[diff > 0])
+
+        onset_bands.append(band_onset)
+
+    # Combine onset envelopes with weights
+    weights = [0.4, 0.3, 0.2, 0.1]  # More weight to lower frequencies
+    onset_env = np.zeros_like(onset_bands[0])
+    for band, weight in zip(onset_bands, weights):
+        onset_env += weight * band
 
     return onset_env, hop_length
 
-def detect_tempo(onset_env, hop_length, sample_rate):
-    """Estimate tempo using autocorrelation."""
+def comb_filter_analysis(onset_env, hop_length, sample_rate):
+    """Analyze tempo using comb filter resonance."""
     # Normalize onset envelope
     onset_env = onset_env - onset_env.mean()
     onset_env = onset_env / onset_env.std()
 
-    # Calculate autocorrelation
-    ac = signal.correlate(onset_env, onset_env, mode='full')
-    ac = ac[len(ac)//2:]
+    # Range of BPMs to check (60-200 BPM in 0.1 BPM steps)
+    bpms = np.arange(60, 200.1, 0.1)
+    resonances = []
 
-    # Convert lag to BPM
-    bpms = 60 * sample_rate / (np.arange(1, len(ac)) * hop_length)
+    for bpm in bpms:
+        period = int(60.0 * sample_rate / (bpm * hop_length))
+        max_n = min(10, len(onset_env) // period)  # Number of impulses to consider
 
-    # Find peaks in autocorrelation
-    peaks = signal.find_peaks(ac, distance=int(sample_rate * 0.5 / hop_length))[0]
-    if len(peaks) == 0:
-        return None
+        # Create comb filter impulse response
+        impulse = np.zeros(len(onset_env))
+        for n in range(max_n):
+            if n * period < len(impulse):
+                impulse[n * period] = 1.0 / (n + 1)  # Decay over time
 
-    # Filter peaks to reasonable BPM range
-    valid_peaks = [(i, bpms[i]) for i in peaks if 60 <= bpms[i] <= 200]
-    if not valid_peaks:
-        return None
+        # Convolve with onset envelope
+        response = signal.convolve(onset_env, impulse, mode='valid')
+        resonances.append(np.mean(np.abs(response)))
 
-    # Weight peaks by their correlation value and tempo reasonableness
-    peak_weights = []
-    for i, bpm in valid_peaks:
-        # Weight by correlation strength
-        correlation_weight = ac[i]
-        # Weight by tempo likelihood (prefer 120-130 BPM range)
-        tempo_weight = 1.0 - min(abs(bpm - 125) / 65, 1.0)
-        peak_weights.append(correlation_weight * tempo_weight)
-
-    # Return BPM with highest weight
-    best_peak_idx = np.argmax(peak_weights)
-    return round(valid_peaks[best_peak_idx][1])
+    return bpms, np.array(resonances)
 
 def detect_bpm(filename):
     """Detect BPM from any audio file."""
@@ -112,13 +121,45 @@ def detect_bpm(filename):
         # Normalize audio
         samples = samples / np.abs(samples).max()
 
-        # Calculate onset strength
+        # Calculate onset strength with multiple frequency bands
         onset_env, hop_length = onset_strength(samples, sample_rate)
 
-        # Detect tempo
-        bpm = detect_tempo(onset_env, hop_length, sample_rate)
+        # Perform comb filter analysis
+        bpms, resonances = comb_filter_analysis(onset_env, hop_length, sample_rate)
 
-        return bpm
+        # Find peaks in resonance curve
+        peak_indices = signal.find_peaks(resonances, distance=10)[0]  # Min 1 BPM separation
+        peak_bpms = bpms[peak_indices]
+        peak_resonances = resonances[peak_indices]
+
+        if len(peak_bpms) == 0:
+            return None
+
+        # Weight peaks by resonance strength and tempo likelihood
+        weights = []
+        for bpm, res in zip(peak_bpms, peak_resonances):
+            # Strong preference for common tempo ranges
+            if 115 <= bpm <= 135:
+                tempo_weight = 1.0
+            elif 90 <= bpm <= 150:
+                tempo_weight = 0.8
+            else:
+                tempo_weight = 0.6
+
+            # Check for period doubling/halving relationships
+            harmonic_relations = [bpm/2, bpm*2]
+            for related_bpm in harmonic_relations:
+                if any(abs(p - related_bpm) < 1.0 for p in peak_bpms):
+                    tempo_weight *= 1.2  # Boost weight if harmonically related peaks exist
+
+            weights.append(res * tempo_weight)
+
+        # Select BPM with highest weight
+        best_idx = np.argmax(weights)
+        bpm = peak_bpms[best_idx]
+
+        # Round to nearest 0.1 BPM for high precision
+        return round(bpm, 1)
 
     finally:
         # Clean up temporary file
