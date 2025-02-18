@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { type AudioFile } from "@shared/schema";
-import { Volume2 } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface MixerProps {
   audioFiles: AudioFile[];
@@ -15,6 +16,11 @@ export default function Mixer({ audioFiles }: MixerProps) {
     Object.fromEntries(audioFiles.map(f => [f.id, 1]))
   );
   const { toast } = useToast();
+
+  // Reset volumes when audio files change
+  useEffect(() => {
+    setVolumes(Object.fromEntries(audioFiles.map(f => [f.id, 1])));
+  }, [audioFiles]);
 
   const mixMutation = useMutation({
     mutationFn: async () => {
@@ -38,7 +44,9 @@ export default function Mixer({ audioFiles }: MixerProps) {
       const a = document.createElement('a');
       a.href = url;
       a.download = 'mashup.mp3';
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast({
         title: "Mashup created",
@@ -54,23 +62,43 @@ export default function Mixer({ audioFiles }: MixerProps) {
     }
   });
 
+  const updateVolume = (fileId: number, value: number) => {
+    setVolumes(prev => ({...prev, [fileId]: value}));
+  };
+
   return (
     <div className="space-y-6 mt-6">
-      {audioFiles.map((file) => (
-        <div key={file.id} className="space-y-2">
-          <div className="flex items-center gap-4">
-            <Volume2 className="h-4 w-4" />
-            <Slider
-              value={[volumes[file.id] * 100]}
-              onValueChange={(value) => {
-                setVolumes({...volumes, [file.id]: value[0] / 100});
-              }}
-              max={100}
-              step={1}
-            />
+      <div className="grid gap-4">
+        {audioFiles.map((file) => (
+          <div key={file.id} className="bg-card p-4 rounded-lg space-y-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-medium text-sm">{file.filename}</span>
+              <span className="text-sm text-muted-foreground">
+                Volume: {Math.round(volumes[file.id] * 100)}%
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <VolumeX className={cn(
+                "h-4 w-4 transition-opacity",
+                volumes[file.id] === 0 ? "opacity-100" : "opacity-50"
+              )} />
+              <Slider
+                value={[volumes[file.id] * 100]}
+                onValueChange={(value) => {
+                  updateVolume(file.id, value[0] / 100);
+                }}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+              <Volume2 className={cn(
+                "h-4 w-4 transition-opacity",
+                volumes[file.id] === 1 ? "opacity-100" : "opacity-50"
+              )} />
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       <Button 
         className="w-full"

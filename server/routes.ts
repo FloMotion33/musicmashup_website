@@ -51,9 +51,9 @@ export async function registerRoutes(app: Express) {
       res.json(audioFile);
     } catch (err) {
       console.error("Upload error:", err);
-      res.status(500).json({ 
-        message: "Failed to process audio file", 
-        details: process.env.NODE_ENV === 'development' ? (err as Error).message : undefined 
+      res.status(500).json({
+        message: "Failed to process audio file",
+        details: process.env.NODE_ENV === 'development' ? (err as Error).message : undefined
       });
     }
   });
@@ -105,8 +105,57 @@ export async function registerRoutes(app: Express) {
   app.post("/api/mashups", async (req, res) => {
     try {
       const mashup = insertMashupSchema.parse(req.body);
-      const saved = await storage.saveMashup(mashup);
-      res.json(saved);
+
+      if (!mashup.audioFileIds || !mashup.mixSettings) {
+        return res.status(400).json({ message: "Missing required mashup data" });
+      }
+
+      // Get all audio files
+      const audioFiles = await Promise.all(
+        mashup.audioFileIds.map(id => storage.getAudioFile(id))
+      );
+
+      if (audioFiles.some(file => !file)) {
+        return res.status(404).json({ message: "One or more audio files not found" });
+      }
+
+      // Create temporary output file
+      const outputPath = `/tmp/mashup-${Date.now()}.mp3`;
+
+      try {
+        // Prepare data for Python script
+        const filePaths = audioFiles.map(file => file!.filepath);
+        const volumes = Object.fromEntries(
+          audioFiles.map((file, index) => [index, mashup.mixSettings!.volumes[file!.id]])
+        );
+
+        // Run audio processing script
+        const scriptPath = path.join(process.cwd(), "audio_processor.py");
+        const { stdout, stderr } = await execAsync(
+          `python3 "${scriptPath}" '${JSON.stringify(filePaths)}' '${JSON.stringify(volumes)}' "${outputPath}"`
+        );
+
+        if (stderr || stdout.trim() !== "success") {
+          throw new Error("Audio processing failed: " + stderr);
+        }
+
+        // Stream the file back to the client
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Disposition', 'attachment; filename=mashup.mp3');
+
+        const fileStream = fs.createReadStream(outputPath);
+        fileStream.pipe(res);
+
+        // Clean up temp file after streaming
+        fileStream.on('end', () => {
+          fs.unlink(outputPath, (err) => {
+            if (err) console.error('Error cleaning up mashup file:', err);
+          });
+        });
+      } catch (err) {
+        console.error("Mashup creation error:", err);
+        res.status(500).json({ message: "Failed to create mashup" });
+      }
     } catch (err) {
       res.status(400).json({ message: "Invalid mashup data" });
     }
