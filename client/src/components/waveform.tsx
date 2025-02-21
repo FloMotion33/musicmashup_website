@@ -17,21 +17,19 @@ export default function Waveform({ audioFile }: WaveformProps) {
     if (waveformRef.current) {
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
-        waveColor: 'hsl(250 95% 60% / 0.6)', 
-        progressColor: 'hsl(250 95% 60%)', 
+        waveColor: 'hsl(250 95% 60% / 0.4)',
+        progressColor: 'hsl(250 95% 60%)',
         cursorColor: 'hsl(250 95% 60%)',
-        height: 120,
+        height: 100,
         normalize: true,
-        minPxPerSec: 1, 
+        minPxPerSec: 10,
+        fillParent: true,
+        autoScroll: false,
+        autoCenter: true,
+        interact: true,
         barWidth: 2,
         barGap: 1,
-        barRadius: 2,
-        cursorWidth: 2,
-        fillParent: true,
-        autoCenter: false, 
-        interact: true,
-        responsive: true,
-        pixelRatio: 1, 
+        barRadius: 2
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
@@ -51,7 +49,7 @@ export default function Waveform({ audioFile }: WaveformProps) {
   };
 
   return (
-    <div className="space-y-3 bg-card p-4 rounded-lg border">
+    <div className="space-y-3 bg-background/5 p-4 rounded-lg border border-border/50">
       <div className="flex items-center justify-between">
         <div>
           <span className="font-medium">{audioFile.filename}</span>
@@ -65,11 +63,12 @@ export default function Waveform({ audioFile }: WaveformProps) {
           size="sm"
           variant="secondary"
           onClick={togglePlayback}
+          className="bg-primary/10 hover:bg-primary/20"
         >
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
       </div>
-      <div ref={waveformRef} className="bg-muted/30 rounded-lg overflow-hidden" />
+      <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden" />
     </div>
   );
 }

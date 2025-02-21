@@ -17,7 +17,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
   );
   const { toast } = useToast();
 
-  // Reset volumes when audio files change
   useEffect(() => {
     setVolumes(Object.fromEntries(audioFiles.map(f => [f.id, 1])));
   }, [audioFiles]);
@@ -63,17 +62,17 @@ export default function Mixer({ audioFiles }: MixerProps) {
   });
 
   const updateVolume = useCallback((fileId: number, value: number) => {
-    setVolumes(prev => {
-      const newVolumes = { ...prev, [fileId]: value };
-      return newVolumes;
-    });
+    setVolumes(prev => ({
+      ...prev,
+      [fileId]: value
+    }));
   }, []);
 
   return (
     <div className="space-y-6 mt-6">
       <div className="grid gap-4">
         {audioFiles.map((file) => (
-          <div key={file.id} className="bg-card p-4 rounded-lg space-y-2 border">
+          <div key={file.id} className="bg-background/5 p-4 rounded-lg space-y-2 border border-border/50">
             <div className="flex items-center justify-between mb-2">
               <span className="font-medium text-sm">{file.filename}</span>
               <span className="text-sm text-muted-foreground">
@@ -83,8 +82,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
             <div className="flex items-center gap-4">
               <VolumeX 
                 className={cn(
-                  "h-4 w-4 transition-opacity cursor-pointer",
-                  volumes[file.id] === 0 ? "opacity-100" : "opacity-50"
+                  "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
+                  volumes[file.id] === 0 ? "text-primary" : "text-muted-foreground"
                 )}
                 onClick={() => updateVolume(file.id, 0)}
               />
@@ -99,8 +98,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
               />
               <Volume2 
                 className={cn(
-                  "h-4 w-4 transition-opacity cursor-pointer",
-                  volumes[file.id] === 1 ? "opacity-100" : "opacity-50"
+                  "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
+                  volumes[file.id] === 1 ? "text-primary" : "text-muted-foreground"
                 )}
                 onClick={() => updateVolume(file.id, 1)}
               />
@@ -110,7 +109,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
       </div>
 
       <Button 
-        className="w-full"
+        className="w-full bg-primary hover:bg-primary/90"
         onClick={() => mixMutation.mutate()}
         disabled={mixMutation.isPending}
       >
