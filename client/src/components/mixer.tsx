@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { type AudioFile } from "@shared/schema";
-import { Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX, Mic, Music2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -15,6 +17,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
   const [volumes, setVolumes] = useState<Record<number, number>>(
     Object.fromEntries(audioFiles.map(f => [f.id, 1]))
   );
+  const [extractVocals, setExtractVocals] = useState(false);
+  const [extractInstrumental, setExtractInstrumental] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -31,7 +35,9 @@ export default function Mixer({ audioFiles }: MixerProps) {
           audioFileIds: audioFiles.map(f => f.id),
           mixSettings: {
             volumes,
-            bpm: Math.max(...audioFiles.map(f => f.bpm || 0))
+            bpm: Math.max(...audioFiles.map(f => f.bpm || 0)),
+            extractVocals,
+            extractInstrumental
           }
         })
       });
@@ -106,6 +112,34 @@ export default function Mixer({ audioFiles }: MixerProps) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="space-y-4 bg-background/5 p-4 rounded-lg border border-border/50">
+        <h3 className="font-medium text-sm mb-3">Stem Extraction</h3>
+        <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="extract-vocals"
+              checked={extractVocals}
+              onCheckedChange={setExtractVocals}
+            />
+            <Label htmlFor="extract-vocals" className="cursor-pointer flex items-center gap-1.5">
+              <Mic className="h-4 w-4" />
+              Vocals
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="extract-instrumental"
+              checked={extractInstrumental}
+              onCheckedChange={setExtractInstrumental}
+            />
+            <Label htmlFor="extract-instrumental" className="cursor-pointer flex items-center gap-1.5">
+              <Music2 className="h-4 w-4" />
+              Instrumental
+            </Label>
+          </div>
+        </div>
       </div>
 
       <Button 

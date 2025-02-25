@@ -17,7 +17,9 @@ export const mashups = pgTable("mashups", {
   audioFileIds: integer("audio_file_ids").array(),
   mixSettings: jsonb("mix_settings").$type<{
     volumes: Record<number, number>,
-    bpm: number
+    bpm: number,
+    extractVocals: boolean,
+    extractInstrumental: boolean
   }>(),
 });
 
