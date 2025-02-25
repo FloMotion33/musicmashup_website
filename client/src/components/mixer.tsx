@@ -8,6 +8,7 @@ import { Volume2, VolumeX, Mic, Music2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import Waveform from "./waveform";
 
 interface MixerProps {
   audioFiles: AudioFile[];
@@ -84,6 +85,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
               Volume: {Math.round(volumes[file.id] * 100)}%
             </span>
           </div>
+
+          <Waveform audioFile={file} />
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
