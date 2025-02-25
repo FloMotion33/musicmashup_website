@@ -76,15 +76,16 @@ export default function Mixer({ audioFiles }: MixerProps) {
 
   return (
     <div className="space-y-6 mt-6">
-      <div className="grid gap-4">
-        {audioFiles.map((file) => (
-          <div key={file.id} className="bg-background/5 p-4 rounded-lg space-y-2 border border-border/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium text-sm">{file.filename}</span>
-              <span className="text-sm text-muted-foreground">
-                Volume: {Math.round(volumes[file.id] * 100)}%
-              </span>
-            </div>
+      {audioFiles.map((file) => (
+        <div key={file.id} className="bg-background/5 p-6 rounded-lg border border-border/50 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">{file.filename}</span>
+            <span className="text-sm text-muted-foreground">
+              Volume: {Math.round(volumes[file.id] * 100)}%
+            </span>
+          </div>
+
+          <div className="space-y-4">
             <div className="flex items-center gap-4">
               <VolumeX 
                 className={cn(
@@ -110,37 +111,34 @@ export default function Mixer({ audioFiles }: MixerProps) {
                 onClick={() => updateVolume(file.id, 1)}
               />
             </div>
-          </div>
-        ))}
-      </div>
 
-      <div className="space-y-4 bg-background/5 p-4 rounded-lg border border-border/50">
-        <h3 className="font-medium text-sm mb-3">Stem Extraction</h3>
-        <div className="flex items-center space-x-8">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="extract-vocals"
-              checked={extractVocals}
-              onCheckedChange={setExtractVocals}
-            />
-            <Label htmlFor="extract-vocals" className="cursor-pointer flex items-center gap-1.5">
-              <Mic className="h-4 w-4" />
-              Vocals
-            </Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="extract-instrumental"
-              checked={extractInstrumental}
-              onCheckedChange={setExtractInstrumental}
-            />
-            <Label htmlFor="extract-instrumental" className="cursor-pointer flex items-center gap-1.5">
-              <Music2 className="h-4 w-4" />
-              Instrumental
-            </Label>
+            <div className="flex items-center gap-6 pt-2 border-t border-border/50">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`extract-vocals-${file.id}`}
+                  checked={extractVocals}
+                  onCheckedChange={setExtractVocals}
+                />
+                <Label htmlFor={`extract-vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+                  <Mic className="h-4 w-4" />
+                  Vocals
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id={`extract-instrumental-${file.id}`}
+                  checked={extractInstrumental}
+                  onCheckedChange={setExtractInstrumental}
+                />
+                <Label htmlFor={`extract-instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+                  <Music2 className="h-4 w-4" />
+                  Instrumental
+                </Label>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      ))}
 
       <Button 
         className="w-full bg-primary hover:bg-primary/90"

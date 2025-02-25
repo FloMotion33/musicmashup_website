@@ -20,16 +20,16 @@ export default function Waveform({ audioFile }: WaveformProps) {
         waveColor: 'hsl(250 95% 60% / 0.4)',
         progressColor: 'hsl(250 95% 60%)',
         cursorColor: 'hsl(250 95% 60%)',
-        height: 100,
+        height: 80,
         normalize: true,
-        minPxPerSec: 10,
-        fillParent: true,
-        autoScroll: false,
-        autoCenter: true,
-        interact: true,
         barWidth: 2,
         barGap: 1,
-        barRadius: 2
+        barRadius: 2,
+        minPxPerSec: 1,
+        fillParent: true,
+        autoScroll: false,
+        autoCenter: false,
+        interact: true
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
@@ -49,7 +49,7 @@ export default function Waveform({ audioFile }: WaveformProps) {
   };
 
   return (
-    <div className="space-y-3 bg-background/5 p-4 rounded-lg border border-border/50">
+    <div className="space-y-2 bg-background/5 p-4 rounded-lg border border-border/50">
       <div className="flex items-center justify-between">
         <div>
           <span className="font-medium">{audioFile.filename}</span>
