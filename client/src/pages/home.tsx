@@ -24,8 +24,10 @@ export default function Home() {
       });
       if (!res.ok) throw new Error('Failed to delete file');
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedFileId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/audio-files"] });
+      // Remove the deleted file from selectedFiles
+      setSelectedFiles(prev => prev.filter(file => file.id !== deletedFileId));
       toast({
         title: "File deleted",
         description: "Audio file has been removed"

@@ -15,15 +15,20 @@ interface MixerProps {
 }
 
 export default function Mixer({ audioFiles }: MixerProps) {
-  const [volumes, setVolumes] = useState<Record<number, number>>(
-    Object.fromEntries(audioFiles.map(f => [f.id, 1]))
-  );
+  const [volumes, setVolumes] = useState<Record<number, number>>({});
   const [extractVocals, setExtractVocals] = useState(false);
   const [extractInstrumental, setExtractInstrumental] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    setVolumes(Object.fromEntries(audioFiles.map(f => [f.id, 1])));
+    // Reset volumes when audio files change
+    setVolumes(prev => {
+      const newVolumes: Record<number, number> = {};
+      audioFiles.forEach(file => {
+        newVolumes[file.id] = prev[file.id] ?? 1;
+      });
+      return newVolumes;
+    });
   }, [audioFiles]);
 
   const mixMutation = useMutation({
