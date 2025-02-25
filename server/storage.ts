@@ -3,6 +3,7 @@ import { audioFiles, mashups, type AudioFile, type InsertAudioFile, type Mashup,
 export interface IStorage {
   saveAudioFile(file: InsertAudioFile): Promise<AudioFile>;
   getAudioFile(id: number): Promise<AudioFile | undefined>;
+  deleteAudioFile(id: number): Promise<void>;
   saveMashup(mashup: InsertMashup): Promise<Mashup>;
   getMashup(id: number): Promise<Mashup | undefined>;
   listAudioFiles(): Promise<AudioFile[]>;
@@ -39,7 +40,9 @@ export class MemStorage implements IStorage {
   async getAudioFile(id: number): Promise<AudioFile | undefined> {
     return this.audioFiles.get(id);
   }
-
+  async deleteAudioFile(id: number): Promise<void> {
+    this.audioFiles.delete(id);
+  }
   async saveMashup(mashup: InsertMashup): Promise<Mashup> {
     const id = this.mashupId++;
     const newMashup: Mashup = {

@@ -21,18 +21,19 @@ export default function Waveform({ audioFile }: WaveformProps) {
         progressColor: 'hsl(250 95% 60%)',
         cursorColor: 'hsl(250 95% 60%)',
         height: 64,
-        normalize: false,
-        barWidth: 3,
-        barGap: 2,
-        barRadius: 3,
-        minPxPerSec: 1,
+        normalize: true,
+        minPxPerSec: 50,
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
         fillParent: true,
-        autoScroll: false,
+        autoScroll: true,
         autoCenter: false,
         interact: true,
-        peaks: true,
+        peaks: false,
+        forceDecode: true,
         splitChannels: false,
-        pixelRatio: window.devicePixelRatio
+        pixelRatio: 1
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
@@ -52,6 +53,16 @@ export default function Waveform({ audioFile }: WaveformProps) {
   };
 
   return (
-    <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden h-16" />
+    <div className="space-y-2">
+      <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden h-16" />
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={togglePlayback}
+        className="hover:bg-primary/10"
+      >
+        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </Button>
+    </div>
   );
 }

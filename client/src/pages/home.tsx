@@ -1,17 +1,43 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import AudioUpload from "@/components/audio-upload";
-import Waveform from "@/components/waveform";
 import Mixer from "@/components/mixer";
-import { useQuery } from "@tanstack/react-query";
-import { Loader2, Music } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Loader2, Music, Trash2 } from "lucide-react";
 import { type AudioFile } from "@shared/schema";
+import { Button } from "@/components/ui/button";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<AudioFile[]>([]);
+  const { toast } = useToast();
 
   const { data: audioFiles, isLoading } = useQuery({
     queryKey: ["/api/audio-files"]
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const res = await fetch(`/api/audio/${fileId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete file');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/audio-files"] });
+      toast({
+        title: "File deleted",
+        description: "Audio file has been removed"
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Delete failed",
+        description: "Could not delete the audio file",
+        variant: "destructive"
+      });
+    }
   });
 
   return (
@@ -50,6 +76,15 @@ export default function Home() {
                       <p className="font-medium">{file.filename}</p>
                       <p className="text-sm text-muted-foreground">BPM: {file.bpm}</p>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteMutation.mutate(file.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -59,16 +94,7 @@ export default function Home() {
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-4">Mixer</h2>
             {selectedFiles.length > 0 ? (
-              <>
-                <div className="space-y-6">
-                  {selectedFiles.map((file) => (
-                    <div key={file.id}>
-                      <Waveform audioFile={file} />
-                    </div>
-                  ))}
-                </div>
-                <Mixer audioFiles={selectedFiles} />
-              </>
+              <Mixer audioFiles={selectedFiles} />
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 Select audio files to start mixing

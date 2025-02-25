@@ -102,6 +102,27 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.delete("/api/audio/:id", async (req, res) => {
+    try {
+      const file = await storage.getAudioFile(parseInt(req.params.id));
+      if (!file) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      // Delete the physical file
+      if (fs.existsSync(file.filepath)) {
+        fs.unlinkSync(file.filepath);
+      }
+
+      // Remove from storage
+      await storage.deleteAudioFile(parseInt(req.params.id));
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("Delete error:", err);
+      res.status(500).json({ message: "Failed to delete audio file" });
+    }
+  });
+
   app.post("/api/mashups", async (req, res) => {
     try {
       const mashup = insertMashupSchema.parse(req.body);
