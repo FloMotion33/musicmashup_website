@@ -123,15 +123,15 @@ export default function Mixer({ audioFiles }: MixerProps) {
     <div className="space-y-6 mt-6">
       <div className="flex justify-center mb-4">
         <Button
-          size="lg"
+          size="icon"
           onClick={togglePlayback}
           disabled={readyCount !== audioFiles.length}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          className="h-12 w-12 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg"
         >
           {isPlaying ? (
-            <><Pause className="mr-2 h-4 w-4" /> Pause All</>
+            <Pause className="h-6 w-6" />
           ) : (
-            <><Play className="mr-2 h-4 w-4" /> Play All</>
+            <Play className="h-6 w-6" />
           )}
         </Button>
       </div>

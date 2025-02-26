@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { type AudioFile } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Play, Pause } from "lucide-react";
 
 interface WaveformProps {
   audioFile: AudioFile;
@@ -66,8 +64,6 @@ export default function Waveform({ audioFile, onPlaybackChange, playing = false,
   }, [playing]);
 
   return (
-    <div className="space-y-2">
-      <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden h-16" />
-    </div>
+    <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden h-16" />
   );
 }
