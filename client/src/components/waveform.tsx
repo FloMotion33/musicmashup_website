@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { type AudioFile } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -6,12 +6,14 @@ import { Play, Pause } from "lucide-react";
 
 interface WaveformProps {
   audioFile: AudioFile;
+  onPlaybackChange?: (isPlaying: boolean) => void;
+  playing?: boolean;
+  onReady?: () => void;
 }
 
-export default function Waveform({ audioFile }: WaveformProps) {
+export default function Waveform({ audioFile, onPlaybackChange, playing = false, onReady }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     if (waveformRef.current) {
@@ -38,31 +40,34 @@ export default function Waveform({ audioFile }: WaveformProps) {
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
 
-      wavesurfer.current.on('play', () => setIsPlaying(true));
-      wavesurfer.current.on('pause', () => setIsPlaying(false));
-      wavesurfer.current.on('finish', () => setIsPlaying(false));
+      wavesurfer.current.on('ready', () => {
+        onReady?.();
+      });
+
+      wavesurfer.current.on('play', () => onPlaybackChange?.(true));
+      wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
+      wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
     }
 
     return () => {
       wavesurfer.current?.destroy();
     };
-  }, [audioFile]);
+  }, [audioFile, onPlaybackChange, onReady]);
 
-  const togglePlayback = () => {
-    wavesurfer.current?.playPause();
-  };
+  // Control playback from parent
+  useEffect(() => {
+    if (wavesurfer.current) {
+      if (playing && !wavesurfer.current.isPlaying()) {
+        wavesurfer.current.play();
+      } else if (!playing && wavesurfer.current.isPlaying()) {
+        wavesurfer.current.pause();
+      }
+    }
+  }, [playing]);
 
   return (
     <div className="space-y-2">
       <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden h-16" />
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={togglePlayback}
-        className="hover:bg-primary/10"
-      >
-        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-      </Button>
     </div>
   );
 }

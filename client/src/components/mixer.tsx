@@ -4,7 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { type AudioFile } from "@shared/schema";
-import { Volume2, VolumeX, Mic, Music2 } from "lucide-react";
+import { Volume2, VolumeX, Mic, Music2, Play, Pause } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
     extractVocals: boolean;
     extractInstrumental: boolean;
   }>>({});
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [readyCount, setReadyCount] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -42,6 +44,10 @@ export default function Mixer({ audioFiles }: MixerProps) {
       });
       return newSettings;
     });
+
+    // Reset playback state when files change
+    setIsPlaying(false);
+    setReadyCount(0);
   }, [audioFiles]);
 
   const mixMutation = useMutation({
@@ -103,8 +109,33 @@ export default function Mixer({ audioFiles }: MixerProps) {
     }));
   }, []);
 
+  const handleWaveformReady = useCallback(() => {
+    setReadyCount(count => count + 1);
+  }, []);
+
+  const togglePlayback = useCallback(() => {
+    if (readyCount === audioFiles.length) {
+      setIsPlaying(!isPlaying);
+    }
+  }, [readyCount, audioFiles.length, isPlaying]);
+
   return (
     <div className="space-y-6 mt-6">
+      <div className="flex justify-center mb-4">
+        <Button
+          size="lg"
+          onClick={togglePlayback}
+          disabled={readyCount !== audioFiles.length}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        >
+          {isPlaying ? (
+            <><Pause className="mr-2 h-4 w-4" /> Pause All</>
+          ) : (
+            <><Play className="mr-2 h-4 w-4" /> Play All</>
+          )}
+        </Button>
+      </div>
+
       {audioFiles.map((file) => (
         <div key={file.id} className="bg-background/5 p-6 rounded-lg border border-border/50 space-y-4">
           <div className="flex items-center justify-between">
@@ -114,7 +145,11 @@ export default function Mixer({ audioFiles }: MixerProps) {
             </span>
           </div>
 
-          <Waveform audioFile={file} />
+          <Waveform 
+            audioFile={file}
+            playing={isPlaying}
+            onReady={handleWaveformReady}
+          />
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
