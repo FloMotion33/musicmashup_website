@@ -16,18 +16,31 @@ interface MixerProps {
 
 export default function Mixer({ audioFiles }: MixerProps) {
   const [volumes, setVolumes] = useState<Record<number, number>>({});
-  const [extractVocals, setExtractVocals] = useState(false);
-  const [extractInstrumental, setExtractInstrumental] = useState(false);
+  const [stemSettings, setStemSettings] = useState<Record<number, {
+    extractVocals: boolean;
+    extractInstrumental: boolean;
+  }>>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    // Reset volumes when audio files change
+    // Reset volumes and stem settings when audio files change
     setVolumes(prev => {
       const newVolumes: Record<number, number> = {};
       audioFiles.forEach(file => {
         newVolumes[file.id] = prev[file.id] ?? 1;
       });
       return newVolumes;
+    });
+
+    setStemSettings(prev => {
+      const newSettings: Record<number, any> = {};
+      audioFiles.forEach(file => {
+        newSettings[file.id] = prev[file.id] ?? {
+          extractVocals: false,
+          extractInstrumental: false
+        };
+      });
+      return newSettings;
     });
   }, [audioFiles]);
 
@@ -42,8 +55,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
           mixSettings: {
             volumes,
             bpm: Math.max(...audioFiles.map(f => f.bpm || 0)),
-            extractVocals,
-            extractInstrumental
+            extractVocals: Object.values(stemSettings).some(s => s.extractVocals),
+            extractInstrumental: Object.values(stemSettings).some(s => s.extractInstrumental)
           }
         })
       });
@@ -77,6 +90,16 @@ export default function Mixer({ audioFiles }: MixerProps) {
     setVolumes(prev => ({
       ...prev,
       [fileId]: value
+    }));
+  }, []);
+
+  const updateStemSettings = useCallback((fileId: number, setting: 'extractVocals' | 'extractInstrumental', value: boolean) => {
+    setStemSettings(prev => ({
+      ...prev,
+      [fileId]: {
+        ...prev[fileId],
+        [setting]: value
+      }
     }));
   }, []);
 
@@ -124,8 +147,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
               <div className="flex items-center gap-2">
                 <Switch
                   id={`extract-vocals-${file.id}`}
-                  checked={extractVocals}
-                  onCheckedChange={setExtractVocals}
+                  checked={stemSettings[file.id]?.extractVocals || false}
+                  onCheckedChange={(checked) => updateStemSettings(file.id, 'extractVocals', checked)}
                 />
                 <Label htmlFor={`extract-vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
                   <Mic className="h-4 w-4" />
@@ -135,8 +158,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
               <div className="flex items-center gap-2">
                 <Switch
                   id={`extract-instrumental-${file.id}`}
-                  checked={extractInstrumental}
-                  onCheckedChange={setExtractInstrumental}
+                  checked={stemSettings[file.id]?.extractInstrumental || false}
+                  onCheckedChange={(checked) => updateStemSettings(file.id, 'extractInstrumental', checked)}
                 />
                 <Label htmlFor={`extract-instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
                   <Music2 className="h-4 w-4" />
