@@ -4,7 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { type AudioFile } from "@shared/schema";
-import { Volume2, VolumeX, Mic, Music2, Play, Pause, Save } from "lucide-react";
+import { Volume2, VolumeX, Mic, Music2, Play, Pause, Save, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -139,14 +139,14 @@ export default function Mixer({ audioFiles }: MixerProps) {
                   </span>
                 </div>
 
-                <Waveform 
+                <Waveform
                   audioFile={file}
                   onReady={handleWaveformReady}
                 />
 
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <VolumeX 
+                    <VolumeX
                       className={cn(
                         "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
                         volumes[file.id] === 0 ? "text-primary" : "text-muted-foreground"
@@ -160,7 +160,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
                       step={1}
                       className="flex-1"
                     />
-                    <Volume2 
+                    <Volume2
                       className={cn(
                         "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
                         volumes[file.id] === 1 ? "text-primary" : "text-muted-foreground"
@@ -197,7 +197,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
               </div>
             ))}
           </div>
-          <Button 
+          <Button
             className="w-full bg-primary hover:bg-primary/90"
             onClick={handleContinue}
           >
@@ -209,32 +209,34 @@ export default function Mixer({ audioFiles }: MixerProps) {
         <>
           <div className="flex flex-col items-center gap-4">
             <Button
-              size="icon"
-              onClick={togglePlayback}
-              disabled={readyCount !== audioFiles.length}
-              className="h-16 w-16 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg"
-            >
-              {isPlaying ? (
-                <Pause className="h-8 w-8" />
-              ) : (
-                <Play className="h-8 w-8" />
-              )}
-            </Button>
+                className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
+                onClick={togglePlayback}
+                disabled={readyCount !== audioFiles.length}
+              >
+                {isPlaying ? (
+                  <><Pause className="h-4 w-4" /> Pause Preview</>
+                ) : (
+                  <><Play className="h-4 w-4" /> Preview Mashup</>
+                )}
+              </Button>
 
-            <Button 
-              className="w-full bg-primary hover:bg-primary/90"
-              onClick={() => mixMutation.mutate()}
-              disabled={mixMutation.isPending}
-            >
-              {mixMutation.isPending ? (
-                "Saving mashup..."
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Save className="h-4 w-4" />
-                  Save Mashup
-                </div>
-              )}
-            </Button>
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
+                onClick={() => mixMutation.mutate()}
+                disabled={mixMutation.isPending}
+              >
+                {mixMutation.isPending ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving mashup...
+                  </div>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Mashup
+                  </>
+                )}
+              </Button>
           </div>
         </>
       )}
