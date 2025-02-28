@@ -11,6 +11,15 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<AudioFile[]>([]);
+  const [stemSettings, setStemSettings] = useState<Record<number, {
+    extractVocals: boolean;
+    extractInstrumental: boolean;
+  }>>({
+    [-1]: { // Default settings for new uploads
+      extractVocals: false,
+      extractInstrumental: false
+    }
+  });
   const { toast } = useToast();
 
   const { data: audioFiles, isLoading } = useQuery({
@@ -26,7 +35,6 @@ export default function Home() {
     },
     onSuccess: (_, deletedFileId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/audio-files"] });
-      // Remove the deleted file from selectedFiles
       setSelectedFiles(prev => prev.filter(file => file.id !== deletedFileId));
       toast({
         title: "File deleted",
@@ -41,6 +49,28 @@ export default function Home() {
       });
     }
   });
+
+  const handleStemSettingsChange = (fileId: number, setting: 'extractVocals' | 'extractInstrumental', value: boolean) => {
+    setStemSettings(prev => ({
+      ...prev,
+      [fileId]: {
+        ...prev[fileId],
+        [setting]: value
+      }
+    }));
+  };
+
+  const handleUpload = (file: AudioFile) => {
+    setSelectedFiles(prev => [...prev, file]);
+    // Apply default stem settings to the new file
+    setStemSettings(prev => ({
+      ...prev,
+      [file.id]: {
+        extractVocals: prev[-1].extractVocals,
+        extractInstrumental: prev[-1].extractInstrumental
+      }
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -57,7 +87,11 @@ export default function Home() {
         <div className="grid gap-8 md:grid-cols-2">
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
-            <AudioUpload onUpload={(file) => setSelectedFiles([...selectedFiles, file])} />
+            <AudioUpload 
+              onUpload={handleUpload}
+              stemSettings={stemSettings}
+              onStemSettingsChange={handleStemSettingsChange}
+            />
 
             {isLoading ? (
               <div className="text-center py-8">
@@ -96,7 +130,10 @@ export default function Home() {
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-4">Mixer</h2>
             {selectedFiles.length > 0 ? (
-              <Mixer audioFiles={selectedFiles} />
+              <Mixer 
+                audioFiles={selectedFiles}
+                stemSettings={stemSettings}
+              />
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 Select audio files to start mixing

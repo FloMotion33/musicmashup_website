@@ -1,32 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { type AudioFile } from "@shared/schema";
-import { 
-  Volume2, VolumeX, Mic, Music2, Play, Pause, Save, 
-  Loader2
-} from "lucide-react";
+import { Play, Pause, Save, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import Waveform from "./waveform";
 
 interface MixerProps {
   audioFiles: AudioFile[];
-}
-
-export default function Mixer({ audioFiles }: MixerProps) {
-  const [volumes, setVolumes] = useState<Record<number, number>>({});
-  const [stemSettings, setStemSettings] = useState<Record<number, {
+  stemSettings: Record<number, {
     extractVocals: boolean;
     extractInstrumental: boolean;
-  }>>({});
+  }>;
+}
+
+export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
+  const [volumes, setVolumes] = useState<Record<number, number>>({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [readyCount, setReadyCount] = useState(0);
   const { toast } = useToast();
-  const [processingStems, setProcessingStems] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     setVolumes(prev => {
@@ -37,20 +30,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
       return newVolumes;
     });
 
-    setStemSettings(prev => {
-      const newSettings: Record<number, any> = {};
-      audioFiles.forEach(file => {
-        newSettings[file.id] = prev[file.id] ?? {
-          extractVocals: false,
-          extractInstrumental: false
-        };
-      });
-      return newSettings;
-    });
-
     setIsPlaying(false);
     setReadyCount(0);
-    setProcessingStems({});
   }, [audioFiles]);
 
   const mixMutation = useMutation({
@@ -63,7 +44,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
           audioFileIds: audioFiles.map(f => f.id),
           mixSettings: {
             volumes,
-            bpm: Math.max(...audioFiles.map(f => f.bpm || 0)),
             extractVocals: Object.values(stemSettings).some(s => s.extractVocals),
             extractInstrumental: Object.values(stemSettings).some(s => s.extractInstrumental)
           }
@@ -95,65 +75,12 @@ export default function Mixer({ audioFiles }: MixerProps) {
     }
   });
 
-  const separateStemsMutation = useMutation({
-    mutationFn: async (fileId: number) => {
-      const res = await fetch(`/api/separate-stems/${fileId}`, {
-        method: 'POST'
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to separate stems");
-      }
-      return res.json();
-    },
-    onMutate: (fileId) => {
-      setProcessingStems(prev => ({ ...prev, [fileId]: true }));
-    },
-    onSuccess: (_, fileId) => {
-      setProcessingStems(prev => ({ ...prev, [fileId]: false }));
-      toast({
-        title: "Stems separated",
-        description: "Audio stems have been processed successfully"
-      });
-    },
-    onError: (error, fileId) => {
-      setProcessingStems(prev => ({ ...prev, [fileId]: false }));
-      setStemSettings(prev => ({
-        ...prev,
-        [fileId]: {
-          ...prev[fileId],
-          extractVocals: false,
-          extractInstrumental: false
-        }
-      }));
-      toast({
-        title: "Stem separation failed",
-        description: error instanceof Error ? error.message : "Could not process audio stems",
-        variant: "destructive"
-      });
-    }
-  });
-
   const updateVolume = useCallback((fileId: number, value: number) => {
     setVolumes(prev => ({
       ...prev,
       [fileId]: value
     }));
   }, []);
-
-  const updateStemSettings = useCallback((fileId: number, setting: 'extractVocals' | 'extractInstrumental', value: boolean) => {
-    setStemSettings(prev => ({
-      ...prev,
-      [fileId]: {
-        ...prev[fileId],
-        [setting]: value
-      }
-    }));
-
-    if (value) {
-      separateStemsMutation.mutate(fileId);
-    }
-  }, [separateStemsMutation]);
 
   const handleWaveformReady = useCallback(() => {
     setReadyCount(count => count + 1);
@@ -167,82 +94,60 @@ export default function Mixer({ audioFiles }: MixerProps) {
 
   return (
     <div className="space-y-6 mt-6">
-      <div className="space-y-4">
+      <div className="space-y-8">
         {audioFiles.map((file) => (
-          <div key={file.id} className="bg-background/5 p-6 rounded-lg border border-border/50 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">{file.filename}</span>
-              <span className="text-sm text-muted-foreground">
-                Volume: {Math.round(volumes[file.id] * 100)}%
-              </span>
-            </div>
-
-            <Waveform 
-              audioFile={file}
-              playing={isPlaying}
-              onReady={handleWaveformReady}
-            />
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <VolumeX 
-                  className={cn(
-                    "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
-                    volumes[file.id] === 0 ? "text-primary" : "text-muted-foreground"
-                  )}
-                  onClick={() => updateVolume(file.id, 0)}
+          <div key={file.id} className="space-y-4">
+            {stemSettings[file.id]?.extractVocals && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    Vocal
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Volume: {Math.round(volumes[file.id] * 100)}%
+                  </span>
+                </div>
+                <Waveform 
+                  audioFile={file}
+                  playing={isPlaying}
+                  onReady={handleWaveformReady}
+                  waveColor="hsl(48 95% 60%)"
                 />
                 <Slider
                   value={[volumes[file.id] * 100]}
                   onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
                   max={100}
                   step={1}
-                  className="flex-1"
-                />
-                <Volume2 
-                  className={cn(
-                    "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
-                    volumes[file.id] === 1 ? "text-primary" : "text-muted-foreground"
-                  )}
-                  onClick={() => updateVolume(file.id, 1)}
+                  className="w-full"
                 />
               </div>
+            )}
 
-              <div className="flex items-center gap-6 pt-2 border-t border-border/50">
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id={`extract-vocals-${file.id}`}
-                    checked={stemSettings[file.id]?.extractVocals || false}
-                    onCheckedChange={(checked) => updateStemSettings(file.id, 'extractVocals', checked)}
-                    disabled={processingStems[file.id]}
-                  />
-                  <Label htmlFor={`extract-vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                    {processingStems[file.id] ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Mic className="h-4 w-4" />
-                    )}
-                    Vocals
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id={`extract-instrumental-${file.id}`}
-                    checked={stemSettings[file.id]?.extractInstrumental || false}
-                    onCheckedChange={(checked) => updateStemSettings(file.id, 'extractInstrumental', checked)}
-                    disabled={processingStems[file.id]}
-                  />
-                  <Label htmlFor={`extract-instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                    {processingStems[file.id] ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Music2 className="h-4 w-4" />
-                    )}
+            {stemSettings[file.id]?.extractInstrumental && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
                     Instrumental
-                  </Label>
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Volume: {Math.round(volumes[file.id] * 100)}%
+                  </span>
                 </div>
+                <Waveform 
+                  audioFile={file}
+                  playing={isPlaying}
+                  onReady={handleWaveformReady}
+                  waveColor="hsl(0 0% 80%)"
+                />
+                <Slider
+                  value={[volumes[file.id] * 100]}
+                  onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
               </div>
-            </div>
+            )}
           </div>
         ))}
       </div>
@@ -277,6 +182,16 @@ export default function Mixer({ audioFiles }: MixerProps) {
             </>
           )}
         </Button>
+
+        <div className="w-full p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+          <Button
+            variant="outline"
+            className="w-full text-yellow-500 hover:text-yellow-600"
+            onClick={() => {/* TODO: Implement full split */}}
+          >
+            Split in Full →
+          </Button>
+        </div>
       </div>
     </div>
   );
