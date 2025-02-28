@@ -97,57 +97,24 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
       <div className="space-y-8">
         {audioFiles.map((file) => (
           <div key={file.id} className="space-y-4">
-            {stemSettings[file.id]?.extractVocals && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium flex items-center gap-2">
-                    Vocal
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Volume: {Math.round(volumes[file.id] * 100)}%
-                  </span>
-                </div>
-                <Waveform 
-                  audioFile={file}
-                  playing={isPlaying}
-                  onReady={handleWaveformReady}
-                  waveColor="hsl(48 95% 60%)"
-                />
-                <Slider
-                  value={[volumes[file.id] * 100]}
-                  onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
-                  max={100}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {stemSettings[file.id]?.extractInstrumental && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium flex items-center gap-2">
-                    Instrumental
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Volume: {Math.round(volumes[file.id] * 100)}%
-                  </span>
-                </div>
-                <Waveform 
-                  audioFile={file}
-                  playing={isPlaying}
-                  onReady={handleWaveformReady}
-                  waveColor="hsl(0 0% 80%)"
-                />
-                <Slider
-                  value={[volumes[file.id] * 100]}
-                  onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
-                  max={100}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{file.filename}</span>
+              <span className="text-sm text-muted-foreground">
+                Volume: {Math.round(volumes[file.id] * 100)}%
+              </span>
+            </div>
+            <Waveform 
+              audioFile={file}
+              playing={isPlaying}
+              onReady={handleWaveformReady}
+            />
+            <Slider
+              value={[volumes[file.id] * 100]}
+              onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
+              max={100}
+              step={1}
+              className="w-full"
+            />
           </div>
         ))}
       </div>
@@ -182,16 +149,6 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
             </>
           )}
         </Button>
-
-        <div className="w-full p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-          <Button
-            variant="outline"
-            className="w-full text-yellow-500 hover:text-yellow-600"
-            onClick={() => {/* TODO: Implement full split */}}
-          >
-            Split in Full →
-          </Button>
-        </div>
       </div>
     </div>
   );

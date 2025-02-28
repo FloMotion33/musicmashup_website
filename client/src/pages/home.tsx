@@ -3,9 +3,11 @@ import { Card } from "@/components/ui/card";
 import AudioUpload from "@/components/audio-upload";
 import Mixer from "@/components/mixer";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, Music, Trash2 } from "lucide-react";
+import { Loader2, Music, Trash2, Mic, Music2 } from "lucide-react";
 import { type AudioFile } from "@shared/schema";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,12 +16,7 @@ export default function Home() {
   const [stemSettings, setStemSettings] = useState<Record<number, {
     extractVocals: boolean;
     extractInstrumental: boolean;
-  }>>({
-    [-1]: { // Default settings for new uploads
-      extractVocals: false,
-      extractInstrumental: false
-    }
-  });
+  }>>({});
   const { toast } = useToast();
 
   const { data: audioFiles, isLoading } = useQuery({
@@ -62,12 +59,11 @@ export default function Home() {
 
   const handleUpload = (file: AudioFile) => {
     setSelectedFiles(prev => [...prev, file]);
-    // Apply default stem settings to the new file
     setStemSettings(prev => ({
       ...prev,
       [file.id]: {
-        extractVocals: prev[-1].extractVocals,
-        extractInstrumental: prev[-1].extractInstrumental
+        extractVocals: false,
+        extractInstrumental: false
       }
     }));
   };
@@ -87,11 +83,7 @@ export default function Home() {
         <div className="grid gap-8 md:grid-cols-2">
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
-            <AudioUpload 
-              onUpload={handleUpload}
-              stemSettings={stemSettings}
-              onStemSettingsChange={handleStemSettingsChange}
-            />
+            <AudioUpload onUpload={handleUpload} />
 
             {isLoading ? (
               <div className="text-center py-8">
@@ -106,21 +98,47 @@ export default function Home() {
             ) : (
               <div className="mt-6 space-y-4">
                 {audioFiles?.map((file: AudioFile) => (
-                  <div key={file.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted">
-                    <Music className="h-5 w-5" />
-                    <div className="flex-1">
-                      <p className="font-medium">{file.filename}</p>
-                      <p className="text-sm text-muted-foreground">BPM: {file.bpm}</p>
+                  <div key={file.id} className="flex flex-col gap-2 p-3 rounded-lg bg-muted">
+                    <div className="flex items-center gap-4">
+                      <Music className="h-5 w-5" />
+                      <div className="flex-1">
+                        <p className="font-medium">{file.filename}</p>
+                        <p className="text-sm text-muted-foreground">BPM: {file.bpm}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteMutation.mutate(file.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteMutation.mutate(file.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-6 pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`vocals-${file.id}`}
+                          checked={stemSettings[file.id]?.extractVocals || false}
+                          onCheckedChange={(checked) => handleStemSettingsChange(file.id, 'extractVocals', checked)}
+                        />
+                        <Label htmlFor={`vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+                          <Mic className="h-4 w-4" />
+                          Vocals
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`instrumental-${file.id}`}
+                          checked={stemSettings[file.id]?.extractInstrumental || false}
+                          onCheckedChange={(checked) => handleStemSettingsChange(file.id, 'extractInstrumental', checked)}
+                        />
+                        <Label htmlFor={`instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+                          <Music2 className="h-4 w-4" />
+                          Instrumental
+                        </Label>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
