@@ -4,7 +4,10 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { type AudioFile } from "@shared/schema";
-import { Volume2, VolumeX, Mic, Music2, Play, Pause, Save, Loader2 } from "lucide-react";
+import { 
+  Volume2, VolumeX, Mic, Music2, Play, Pause, Save, 
+  Loader2, Headphones, Speaker, Guitar 
+} from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -24,9 +27,15 @@ export default function Mixer({ audioFiles }: MixerProps) {
   const [readyCount, setReadyCount] = useState(0);
   const [configurationComplete, setConfigurationComplete] = useState(false);
   const { toast } = useToast();
+  const [processingStems, setProcessingStems] = useState<Record<number, boolean>>({});
+  const [stems, setStems] = useState<Record<number, {
+    vocals?: string;
+    drums?: string;
+    bass?: string;
+    other?: string;
+  }>>({});
 
   useEffect(() => {
-    // Reset states when audio files change
     setVolumes(prev => {
       const newVolumes: Record<number, number> = {};
       audioFiles.forEach(file => {
@@ -49,6 +58,8 @@ export default function Mixer({ audioFiles }: MixerProps) {
     setIsPlaying(false);
     setReadyCount(0);
     setConfigurationComplete(false);
+    setProcessingStems({});
+    setStems({});
   }, [audioFiles]);
 
   const mixMutation = useMutation({
@@ -93,6 +104,33 @@ export default function Mixer({ audioFiles }: MixerProps) {
     }
   });
 
+  const separateStemsMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const res = await fetch(`/api/separate-stems/${fileId}`);
+      if (!res.ok) throw new Error("Failed to separate stems");
+      return res.json();
+    },
+    onMutate: (fileId) => {
+      setProcessingStems(prev => ({ ...prev, [fileId]: true }));
+    },
+    onSuccess: (data, fileId) => {
+      setStems(prev => ({ ...prev, [fileId]: data }));
+      setProcessingStems(prev => ({ ...prev, [fileId]: false }));
+      toast({
+        title: "Stems separated",
+        description: "Audio stems have been processed successfully"
+      });
+    },
+    onError: (_, fileId) => {
+      setProcessingStems(prev => ({ ...prev, [fileId]: false }));
+      toast({
+        title: "Stem separation failed",
+        description: "Could not process audio stems",
+        variant: "destructive"
+      });
+    }
+  });
+
   const updateVolume = useCallback((fileId: number, value: number) => {
     setVolumes(prev => ({
       ...prev,
@@ -127,7 +165,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
   return (
     <div className="space-y-6 mt-6">
       {!configurationComplete ? (
-        // Configuration Phase
         <>
           <div className="space-y-4">
             {audioFiles.map((file) => (
@@ -169,7 +206,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
                     />
                   </div>
 
-                  <div className="flex items-center gap-6 pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
                     <div className="flex items-center gap-2">
                       <Switch
                         id={`extract-vocals-${file.id}`}
@@ -192,6 +229,67 @@ export default function Mixer({ audioFiles }: MixerProps) {
                         Instrumental
                       </Label>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => separateStemsMutation.mutate(file.id)}
+                        disabled={processingStems[file.id]}
+                        className="flex items-center gap-2"
+                      >
+                        {processingStems[file.id] ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Processing Stems...
+                          </>
+                        ) : (
+                          <>
+                            <Music2 className="h-4 w-4" />
+                            Separate Stems
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    {stems[file.id] && (
+                      <div className="flex items-center gap-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {/* TODO: Play vocals */}}
+                        >
+                          <Mic className="h-4 w-4" />
+                          Vocals
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {/* TODO: Play drums */}}
+                        >
+                          <Headphones className="h-4 w-4" />
+                          Drums
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {/* TODO: Play bass */}}
+                        >
+                          <Guitar className="h-4 w-4" />
+                          Bass
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => {/* TODO: Play other */}}
+                        >
+                          <Speaker className="h-4 w-4" />
+                          Other
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -205,38 +303,37 @@ export default function Mixer({ audioFiles }: MixerProps) {
           </Button>
         </>
       ) : (
-        // Preview and Save Phase
         <>
           <div className="flex flex-col items-center gap-4">
             <Button
-                className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
-                onClick={togglePlayback}
-                disabled={readyCount !== audioFiles.length}
-              >
-                {isPlaying ? (
-                  <><Pause className="h-4 w-4" /> Pause Preview</>
-                ) : (
-                  <><Play className="h-4 w-4" /> Preview Mashup</>
-                )}
-              </Button>
+              className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
+              onClick={togglePlayback}
+              disabled={readyCount !== audioFiles.length}
+            >
+              {isPlaying ? (
+                <><Pause className="h-4 w-4" /> Pause Preview</>
+              ) : (
+                <><Play className="h-4 w-4" /> Preview Mashup</>
+              )}
+            </Button>
 
-              <Button 
-                className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
-                onClick={() => mixMutation.mutate()}
-                disabled={mixMutation.isPending}
-              >
-                {mixMutation.isPending ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving mashup...
-                  </div>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Save Mashup
-                  </>
-                )}
-              </Button>
+            <Button 
+              className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
+              onClick={() => mixMutation.mutate()}
+              disabled={mixMutation.isPending}
+            >
+              {mixMutation.isPending ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving mashup...
+                </div>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  Save Mashup
+                </>
+              )}
+            </Button>
           </div>
         </>
       )}

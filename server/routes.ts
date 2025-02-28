@@ -7,6 +7,9 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
+import os from 'os'; // Added import for os module
+import { StemSeparator } from '../stem_separator.py'; // Added import for StemSeparator
+
 
 const execAsync = promisify(exec);
 const upload = multer({ dest: "/tmp/uploads/" });
@@ -185,6 +188,53 @@ export async function registerRoutes(app: Express) {
   app.get("/api/mashups", async (req, res) => {
     const mashups = await storage.listMashups();
     res.json(mashups);
+  });
+
+  app.post("/api/separate-stems/:id", async (req, res) => {
+    try {
+      const file = await storage.getAudioFile(parseInt(req.params.id));
+      if (!file) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      const scriptPath = path.join(process.cwd(), "stem_separator.py");
+      const { stdout, stderr } = await execAsync(
+        `python3 "${scriptPath}" "${file.filepath}"`
+      );
+
+      if (stderr) {
+        console.error("Stem separation error:", stderr);
+        return res.status(500).json({ message: "Stem separation failed" });
+      }
+
+      // Parse the stem paths from stdout
+      const stemPaths = JSON.parse(stdout);
+
+      // Stream the stems back to client
+      res.json({
+        vocals: `/api/audio/stem/${stemPaths.vocals}`,
+        drums: `/api/audio/stem/${stemPaths.drums}`,
+        bass: `/api/audio/stem/${stemPaths.bass}`,
+        other: `/api/audio/stem/${stemPaths.other}`
+      });
+
+    } catch (err) {
+      console.error("Stem separation error:", err);
+      res.status(500).json({ 
+        message: "Failed to separate stems",
+        details: process.env.NODE_ENV === 'development' ? (err as Error).message : undefined
+      });
+    }
+  });
+
+  // Route to serve stem audio files
+  app.get("/api/audio/stem/:filename", (req, res) => {
+    const stemPath = path.join(os.tmpdir(), req.params.filename);
+    if (!fs.existsSync(stemPath)) {
+      return res.status(404).json({ message: "Stem file not found" });
+    }
+
+    res.sendFile(stemPath);
   });
 
   const httpServer = createServer(app);
