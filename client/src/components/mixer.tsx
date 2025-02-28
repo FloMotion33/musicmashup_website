@@ -25,7 +25,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
   }>>({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [readyCount, setReadyCount] = useState(0);
-  const [configurationComplete, setConfigurationComplete] = useState(false);
   const { toast } = useToast();
   const [processingStems, setProcessingStems] = useState<Record<number, boolean>>({});
   const [stems, setStems] = useState<Record<number, {
@@ -57,7 +56,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
 
     setIsPlaying(false);
     setReadyCount(0);
-    setConfigurationComplete(false);
     setProcessingStems({});
     setStems({});
   }, [audioFiles]);
@@ -153,190 +151,135 @@ export default function Mixer({ audioFiles }: MixerProps) {
   }, []);
 
   const togglePlayback = useCallback(() => {
-    if (readyCount === audioFiles.length && configurationComplete) {
+    if (readyCount === audioFiles.length) {
       setIsPlaying(!isPlaying);
     }
-  }, [readyCount, audioFiles.length, isPlaying, configurationComplete]);
-
-  const handleContinue = () => {
-    setConfigurationComplete(true);
-  };
+  }, [readyCount, audioFiles.length, isPlaying]);
 
   return (
     <div className="space-y-6 mt-6">
-      {!configurationComplete ? (
-        <>
-          <div className="space-y-4">
-            {audioFiles.map((file) => (
-              <div key={file.id} className="bg-background/5 p-6 rounded-lg border border-border/50 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{file.filename}</span>
-                  <span className="text-sm text-muted-foreground">
-                    Volume: {Math.round(volumes[file.id] * 100)}%
-                  </span>
-                </div>
+      <div className="space-y-4">
+        {audioFiles.map((file) => (
+          <div key={file.id} className="bg-background/5 p-6 rounded-lg border border-border/50 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{file.filename}</span>
+              <span className="text-sm text-muted-foreground">
+                Volume: {Math.round(volumes[file.id] * 100)}%
+              </span>
+            </div>
 
-                <Waveform
-                  audioFile={file}
-                  onReady={handleWaveformReady}
+            <Waveform
+              audioFile={file}
+              playing={isPlaying}
+              onReady={handleWaveformReady}
+            />
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <VolumeX
+                  className={cn(
+                    "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
+                    volumes[file.id] === 0 ? "text-primary" : "text-muted-foreground"
+                  )}
+                  onClick={() => updateVolume(file.id, 0)}
                 />
+                <Slider
+                  value={[volumes[file.id] * 100]}
+                  onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
+                  max={100}
+                  step={1}
+                  className="flex-1"
+                />
+                <Volume2
+                  className={cn(
+                    "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
+                    volumes[file.id] === 1 ? "text-primary" : "text-muted-foreground"
+                  )}
+                  onClick={() => updateVolume(file.id, 1)}
+                />
+              </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <VolumeX
-                      className={cn(
-                        "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
-                        volumes[file.id] === 0 ? "text-primary" : "text-muted-foreground"
-                      )}
-                      onClick={() => updateVolume(file.id, 0)}
-                    />
-                    <Slider
-                      value={[volumes[file.id] * 100]}
-                      onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
-                      max={100}
-                      step={1}
-                      className="flex-1"
-                    />
-                    <Volume2
-                      className={cn(
-                        "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
-                        volumes[file.id] === 1 ? "text-primary" : "text-muted-foreground"
-                      )}
-                      onClick={() => updateVolume(file.id, 1)}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`extract-vocals-${file.id}`}
-                        checked={stemSettings[file.id]?.extractVocals || false}
-                        onCheckedChange={(checked) => updateStemSettings(file.id, 'extractVocals', checked)}
-                      />
-                      <Label htmlFor={`extract-vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                        <Mic className="h-4 w-4" />
-                        Vocals
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`extract-instrumental-${file.id}`}
-                        checked={stemSettings[file.id]?.extractInstrumental || false}
-                        onCheckedChange={(checked) => updateStemSettings(file.id, 'extractInstrumental', checked)}
-                      />
-                      <Label htmlFor={`extract-instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`extract-vocals-${file.id}`}
+                    checked={stemSettings[file.id]?.extractVocals || false}
+                    onCheckedChange={(checked) => updateStemSettings(file.id, 'extractVocals', checked)}
+                  />
+                  <Label htmlFor={`extract-vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+                    <Mic className="h-4 w-4" />
+                    Vocals
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={`extract-instrumental-${file.id}`}
+                    checked={stemSettings[file.id]?.extractInstrumental || false}
+                    onCheckedChange={(checked) => updateStemSettings(file.id, 'extractInstrumental', checked)}
+                  />
+                  <Label htmlFor={`extract-instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
+                    <Music2 className="h-4 w-4" />
+                    Instrumental
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => separateStemsMutation.mutate(file.id)}
+                    disabled={processingStems[file.id]}
+                    className="flex items-center gap-2"
+                  >
+                    {processingStems[file.id] ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
                         <Music2 className="h-4 w-4" />
-                        Instrumental
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => separateStemsMutation.mutate(file.id)}
-                        disabled={processingStems[file.id]}
-                        className="flex items-center gap-2"
-                      >
-                        {processingStems[file.id] ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Processing Stems...
-                          </>
-                        ) : (
-                          <>
-                            <Music2 className="h-4 w-4" />
-                            Separate Stems
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                    {stems[file.id] && (
-                      <div className="flex items-center gap-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => {/* TODO: Play vocals */}}
-                        >
-                          <Mic className="h-4 w-4" />
-                          Vocals
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => {/* TODO: Play drums */}}
-                        >
-                          <Headphones className="h-4 w-4" />
-                          Drums
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => {/* TODO: Play bass */}}
-                        >
-                          <Guitar className="h-4 w-4" />
-                          Bass
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => {/* TODO: Play other */}}
-                        >
-                          <Speaker className="h-4 w-4" />
-                          Other
-                        </Button>
-                      </div>
+                        Separate Stems
+                      </>
                     )}
-                  </div>
+                  </Button>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-          <Button
-            className="w-full bg-primary hover:bg-primary/90"
-            onClick={handleContinue}
-          >
-            Continue to Preview
-          </Button>
-        </>
-      ) : (
-        <>
-          <div className="flex flex-col items-center gap-4">
-            <Button
-              className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
-              onClick={togglePlayback}
-              disabled={readyCount !== audioFiles.length}
-            >
-              {isPlaying ? (
-                <><Pause className="h-4 w-4" /> Pause Preview</>
-              ) : (
-                <><Play className="h-4 w-4" /> Preview Mashup</>
-              )}
-            </Button>
+        ))}
+      </div>
 
-            <Button 
-              className="w-full bg-primary hover:bg-primary/90 flex items-center justify-center gap-2"
-              onClick={() => mixMutation.mutate()}
-              disabled={mixMutation.isPending}
-            >
-              {mixMutation.isPending ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving mashup...
-                </div>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  Save Mashup
-                </>
-              )}
-            </Button>
-          </div>
-        </>
-      )}
+      <div className="flex gap-4">
+        <Button
+          className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+          onClick={togglePlayback}
+          disabled={readyCount !== audioFiles.length}
+        >
+          {isPlaying ? (
+            <><Pause className="mr-2 h-4 w-4" /> Pause</>
+          ) : (
+            <><Play className="mr-2 h-4 w-4" /> Preview Mashup</>
+          )}
+        </Button>
+
+        <Button 
+          className="flex-1 bg-primary hover:bg-primary/90"
+          onClick={() => mixMutation.mutate()}
+          disabled={mixMutation.isPending}
+        >
+          {mixMutation.isPending ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </div>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Mashup
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

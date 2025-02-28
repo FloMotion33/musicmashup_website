@@ -7,9 +7,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import path from "path";
 import fs from "fs";
-import os from 'os'; // Added import for os module
-import { StemSeparator } from '../stem_separator.py'; // Added import for StemSeparator
-
+import os from 'os';
 
 const execAsync = promisify(exec);
 const upload = multer({ dest: "/tmp/uploads/" });
@@ -198,26 +196,28 @@ export async function registerRoutes(app: Express) {
       }
 
       const scriptPath = path.join(process.cwd(), "stem_separator.py");
-      const { stdout, stderr } = await execAsync(
-        `python3 "${scriptPath}" "${file.filepath}"`
-      );
+      const pythonProcess = await execAsync(`python3 "${scriptPath}" "${file.filepath}"`, {
+        maxBuffer: 1024 * 1024 * 10 // 10MB buffer for large outputs
+      });
 
-      if (stderr) {
-        console.error("Stem separation error:", stderr);
+      if (pythonProcess.stderr) {
+        console.error("Stem separation error:", pythonProcess.stderr);
         return res.status(500).json({ message: "Stem separation failed" });
       }
 
       // Parse the stem paths from stdout
-      const stemPaths = JSON.parse(stdout);
-
-      // Stream the stems back to client
-      res.json({
-        vocals: `/api/audio/stem/${stemPaths.vocals}`,
-        drums: `/api/audio/stem/${stemPaths.drums}`,
-        bass: `/api/audio/stem/${stemPaths.bass}`,
-        other: `/api/audio/stem/${stemPaths.other}`
-      });
-
+      try {
+        const stemPaths = JSON.parse(pythonProcess.stdout);
+        res.json({
+          vocals: `/api/audio/stem/${path.basename(stemPaths.vocals)}`,
+          drums: `/api/audio/stem/${path.basename(stemPaths.drums)}`,
+          bass: `/api/audio/stem/${path.basename(stemPaths.bass)}`,
+          other: `/api/audio/stem/${path.basename(stemPaths.other)}`
+        });
+      } catch (error) {
+        console.error("Failed to parse stem paths:", error, pythonProcess.stdout);
+        res.status(500).json({ message: "Failed to process stem output" });
+      }
     } catch (err) {
       console.error("Stem separation error:", err);
       res.status(500).json({ 
@@ -227,7 +227,6 @@ export async function registerRoutes(app: Express) {
     }
   });
 
-  // Route to serve stem audio files
   app.get("/api/audio/stem/:filename", (req, res) => {
     const stemPath = path.join(os.tmpdir(), req.params.filename);
     if (!fs.existsSync(stemPath)) {
