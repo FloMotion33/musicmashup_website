@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { type AudioFile } from "@shared/schema";
 import { 
   Volume2, VolumeX, Mic, Music2, Play, Pause, Save, 
-  Loader2, Headphones, Speaker, Guitar 
+  Loader2
 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -27,12 +27,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
   const [readyCount, setReadyCount] = useState(0);
   const { toast } = useToast();
   const [processingStems, setProcessingStems] = useState<Record<number, boolean>>({});
-  const [stems, setStems] = useState<Record<number, {
-    vocals?: string;
-    drums?: string;
-    bass?: string;
-    other?: string;
-  }>>({});
 
   useEffect(() => {
     setVolumes(prev => {
@@ -57,7 +51,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
     setIsPlaying(false);
     setReadyCount(0);
     setProcessingStems({});
-    setStems({});
   }, [audioFiles]);
 
   const mixMutation = useMutation({
@@ -111,8 +104,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
     onMutate: (fileId) => {
       setProcessingStems(prev => ({ ...prev, [fileId]: true }));
     },
-    onSuccess: (data, fileId) => {
-      setStems(prev => ({ ...prev, [fileId]: data }));
+    onSuccess: (_, fileId) => {
       setProcessingStems(prev => ({ ...prev, [fileId]: false }));
       toast({
         title: "Stems separated",
@@ -144,7 +136,12 @@ export default function Mixer({ audioFiles }: MixerProps) {
         [setting]: value
       }
     }));
-  }, []);
+
+    // Trigger stem separation when a setting is enabled
+    if (value) {
+      separateStemsMutation.mutate(fileId);
+    }
+  }, [separateStemsMutation]);
 
   const handleWaveformReady = useCallback(() => {
     setReadyCount(count => count + 1);
@@ -168,7 +165,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
               </span>
             </div>
 
-            <Waveform
+            <Waveform 
               audioFile={file}
               playing={isPlaying}
               onReady={handleWaveformReady}
@@ -176,7 +173,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
 
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <VolumeX
+                <VolumeX 
                   className={cn(
                     "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
                     volumes[file.id] === 0 ? "text-primary" : "text-muted-foreground"
@@ -190,7 +187,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
                   step={1}
                   className="flex-1"
                 />
-                <Volume2
+                <Volume2 
                   className={cn(
                     "h-4 w-4 transition-opacity cursor-pointer hover:text-primary",
                     volumes[file.id] === 1 ? "text-primary" : "text-muted-foreground"
@@ -199,15 +196,20 @@ export default function Mixer({ audioFiles }: MixerProps) {
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <div className="flex items-center gap-6 pt-2 border-t border-border/50">
                 <div className="flex items-center gap-2">
                   <Switch
                     id={`extract-vocals-${file.id}`}
                     checked={stemSettings[file.id]?.extractVocals || false}
                     onCheckedChange={(checked) => updateStemSettings(file.id, 'extractVocals', checked)}
+                    disabled={processingStems[file.id]}
                   />
                   <Label htmlFor={`extract-vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                    <Mic className="h-4 w-4" />
+                    {processingStems[file.id] ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mic className="h-4 w-4" />
+                    )}
                     Vocals
                   </Label>
                 </div>
@@ -216,32 +218,16 @@ export default function Mixer({ audioFiles }: MixerProps) {
                     id={`extract-instrumental-${file.id}`}
                     checked={stemSettings[file.id]?.extractInstrumental || false}
                     onCheckedChange={(checked) => updateStemSettings(file.id, 'extractInstrumental', checked)}
+                    disabled={processingStems[file.id]}
                   />
                   <Label htmlFor={`extract-instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                    <Music2 className="h-4 w-4" />
+                    {processingStems[file.id] ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Music2 className="h-4 w-4" />
+                    )}
                     Instrumental
                   </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => separateStemsMutation.mutate(file.id)}
-                    disabled={processingStems[file.id]}
-                    className="flex items-center gap-2"
-                  >
-                    {processingStems[file.id] ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Music2 className="h-4 w-4" />
-                        Separate Stems
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
             </div>
@@ -249,21 +235,21 @@ export default function Mixer({ audioFiles }: MixerProps) {
         ))}
       </div>
 
-      <div className="flex gap-4">
+      <div className="space-y-4">
         <Button
-          className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+          className="w-full bg-green-500 hover:bg-green-600 text-white"
           onClick={togglePlayback}
           disabled={readyCount !== audioFiles.length}
         >
           {isPlaying ? (
-            <><Pause className="mr-2 h-4 w-4" /> Pause</>
+            <><Pause className="mr-2 h-4 w-4" /> Pause Preview</>
           ) : (
             <><Play className="mr-2 h-4 w-4" /> Preview Mashup</>
           )}
         </Button>
 
         <Button 
-          className="flex-1 bg-primary hover:bg-primary/90"
+          className="w-full bg-primary hover:bg-primary/90"
           onClick={() => mixMutation.mutate()}
           disabled={mixMutation.isPending}
         >
