@@ -69,7 +69,7 @@ export default function Mixer({ audioFiles }: MixerProps) {
           }
         })
       });
-      if (!res.ok) throw new Error("Mix failed");
+      if (!res.ok) throw new Error("Failed to save mashup");
       return res.blob();
     },
     onSuccess: (blob) => {
@@ -97,8 +97,13 @@ export default function Mixer({ audioFiles }: MixerProps) {
 
   const separateStemsMutation = useMutation({
     mutationFn: async (fileId: number) => {
-      const res = await fetch(`/api/separate-stems/${fileId}`);
-      if (!res.ok) throw new Error("Failed to separate stems");
+      const res = await fetch(`/api/separate-stems/${fileId}`, {
+        method: 'POST'
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to separate stems");
+      }
       return res.json();
     },
     onMutate: (fileId) => {
@@ -111,11 +116,19 @@ export default function Mixer({ audioFiles }: MixerProps) {
         description: "Audio stems have been processed successfully"
       });
     },
-    onError: (_, fileId) => {
+    onError: (error, fileId) => {
       setProcessingStems(prev => ({ ...prev, [fileId]: false }));
+      setStemSettings(prev => ({
+        ...prev,
+        [fileId]: {
+          ...prev[fileId],
+          extractVocals: false,
+          extractInstrumental: false
+        }
+      }));
       toast({
         title: "Stem separation failed",
-        description: "Could not process audio stems",
+        description: error instanceof Error ? error.message : "Could not process audio stems",
         variant: "destructive"
       });
     }
@@ -137,7 +150,6 @@ export default function Mixer({ audioFiles }: MixerProps) {
       }
     }));
 
-    // Trigger stem separation when a setting is enabled
     if (value) {
       separateStemsMutation.mutate(fileId);
     }

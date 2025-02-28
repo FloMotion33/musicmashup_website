@@ -15,58 +15,62 @@ def separate_stems(audio_path):
     """
     try:
         # Convert input to wav if needed
+        print("Converting audio to WAV...", file=sys.stderr)
         audio = AudioSegment.from_file(audio_path)
         with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_wav:
             audio.export(temp_wav.name, format='wav')
             wav_path = temp_wav.name
 
-        print("Loading model...", file=sys.stderr)
-        # Load model
+        print("Loading Demucs model...", file=sys.stderr)
         model = get_model('htdemucs')
         model.eval()
-        if torch.cuda.is_available():
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if device == 'cuda':
             model.cuda()
+        print(f"Using device: {device}", file=sys.stderr)
 
         print("Processing audio...", file=sys.stderr)
-        # Load and separate
         wav = model.load_track(wav_path)
         ref = wav.mean(0)
         wav = (wav - ref.mean()) / ref.std()
 
-        # Apply the model
-        sources = apply_model(model, wav.unsqueeze(0), device='cuda' if torch.cuda.is_available() else 'cpu')[0]
+        print("Applying model for stem separation...", file=sys.stderr)
+        sources = apply_model(model, wav.unsqueeze(0), device=device)[0]
         sources = sources * ref.std() + ref.mean()
 
         print("Exporting stems...", file=sys.stderr)
-        # Export each stem
         stem_paths = {}
         stems = ['vocals', 'drums', 'bass', 'other']
 
         for i, source in enumerate(sources):
             stem_name = stems[i]
+            print(f"Processing {stem_name}...", file=sys.stderr)
+
             source = source.cpu().numpy()
-
-            # Create a unique filename in the temp directory
-            temp_stem = tempfile.NamedTemporaryFile(suffix=f'_{stem_name}.mp3', delete=False)
-
-            # Convert source to the correct format for pydub
-            # Ensure the audio data is in the correct shape and format
-            source = source.T  # Transpose to get channels last
-            source = source * 32768  # Scale to 16-bit integer range
+            source = source.T
+            source = source * 32768
             source = source.astype(np.int16)
 
-            # Create AudioSegment
+            # Create unique filename in temp directory
+            temp_stem = tempfile.NamedTemporaryFile(suffix=f'_{stem_name}.mp3', delete=False)
+
+            # Create AudioSegment and export
             source_audio = AudioSegment(
-                source.tobytes(), 
+                source.tobytes(),
                 frame_rate=44100,
-                sample_width=2,  # 16-bit audio
+                sample_width=2,
                 channels=2
             )
 
-            # Export to MP3
-            source_audio.export(temp_stem.name, format='mp3', parameters=["-q:a", "0"])
+            source_audio.export(
+                temp_stem.name,
+                format='mp3',
+                parameters=["-q:a", "0"]
+            )
+
             stem_paths[stem_name] = os.path.basename(temp_stem.name)
 
+        print("Stem separation complete!", file=sys.stderr)
         print(json.dumps(stem_paths))
         return stem_paths
 
@@ -78,8 +82,8 @@ def separate_stems(audio_path):
         if 'wav_path' in locals():
             try:
                 os.unlink(wav_path)
-            except:
-                pass
+            except Exception as e:
+                print(f"Error cleaning up temp file: {str(e)}", file=sys.stderr)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -87,4 +91,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     audio_path = sys.argv[1]
+    if not os.path.exists(audio_path):
+        print(f"Error: File not found: {audio_path}", file=sys.stderr)
+        sys.exit(1)
+
     separate_stems(audio_path)
