@@ -7,9 +7,22 @@ interface WaveformProps {
   onPlaybackChange?: (isPlaying: boolean) => void;
   playing?: boolean;
   onReady?: () => void;
+  waveColor?: string;
+  progressColor?: string;
+  height?: number;
+  hideControls?: boolean;
 }
 
-export default function Waveform({ audioFile, onPlaybackChange, playing = false, onReady }: WaveformProps) {
+export default function Waveform({ 
+  audioFile, 
+  onPlaybackChange, 
+  playing = false, 
+  onReady,
+  waveColor = 'hsl(250 95% 60% / 0.4)',
+  progressColor = 'hsl(250 95% 60%)',
+  height = 64,
+  hideControls = false
+}: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
 
@@ -17,19 +30,19 @@ export default function Waveform({ audioFile, onPlaybackChange, playing = false,
     if (waveformRef.current) {
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
-        waveColor: 'hsl(250 95% 60% / 0.4)',
-        progressColor: 'hsl(250 95% 60%)',
-        cursorColor: 'hsl(250 95% 60%)',
-        height: 64,
+        waveColor,
+        progressColor,
+        cursorColor: progressColor,
+        height,
         normalize: true,
         minPxPerSec: 50,
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
         fillParent: true,
-        autoScroll: false,
-        autoCenter: false,
-        interact: true,
+        autoScroll: true,
+        autoCenter: true,
+        interact: !hideControls,
         peaks: false,
         forceDecode: true,
         splitChannels: false,
@@ -50,7 +63,7 @@ export default function Waveform({ audioFile, onPlaybackChange, playing = false,
     return () => {
       wavesurfer.current?.destroy();
     };
-  }, [audioFile, onPlaybackChange, onReady]);
+  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
 
   // Control playback from parent
   useEffect(() => {
@@ -64,6 +77,6 @@ export default function Waveform({ audioFile, onPlaybackChange, playing = false,
   }, [playing]);
 
   return (
-    <div ref={waveformRef} className="bg-muted/10 rounded-lg overflow-hidden h-16" />
+    <div ref={waveformRef} className="rounded-lg overflow-hidden" style={{ height }} />
   );
 }
