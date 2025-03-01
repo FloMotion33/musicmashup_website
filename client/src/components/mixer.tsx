@@ -93,27 +93,48 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   }, [readyCount, audioFiles.length, isPlaying]);
 
   return (
-    <div className="space-y-6 mt-6">
-      <div className="space-y-8">
+    <div 
+      className="space-y-6 mt-6"
+      role="region"
+      aria-label="Audio mixer"
+    >
+      <div 
+        className="space-y-8"
+        role="list"
+        aria-label="Audio tracks"
+      >
         {audioFiles.map((file) => (
-          <div key={file.id} className="space-y-4">
+          <div 
+            key={file.id} 
+            className="space-y-4"
+            role="listitem"
+            aria-label={`Track: ${file.filename}`}
+          >
             <div className="flex items-center justify-between">
-              <span className="font-medium">{file.filename}</span>
-              <span className="text-sm text-muted-foreground">
+              <span className="font-medium" tabIndex={0}>{file.filename}</span>
+              <span 
+                className="text-sm text-muted-foreground"
+                aria-live="polite"
+                tabIndex={0}
+              >
                 Volume: {Math.round(volumes[file.id] * 100)}%
               </span>
             </div>
+
             <Waveform 
               audioFile={file}
               playing={isPlaying}
               onReady={handleWaveformReady}
+              aria-label={`Waveform for ${file.filename}`}
             />
+
             <Slider
               value={[volumes[file.id] * 100]}
               onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
               max={100}
               step={1}
               className="w-full"
+              aria-label={`Volume control for ${file.filename}`}
             />
           </div>
         ))}
@@ -124,11 +145,12 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
           className="w-full bg-green-500 hover:bg-green-600 text-white"
           onClick={togglePlayback}
           disabled={readyCount !== audioFiles.length}
+          aria-label={isPlaying ? "Pause preview" : "Preview mashup"}
         >
           {isPlaying ? (
-            <><Pause className="mr-2 h-4 w-4" /> Pause Preview</>
+            <><Pause className="mr-2 h-4 w-4" aria-hidden="true" /> Pause Preview</>
           ) : (
-            <><Play className="mr-2 h-4 w-4" /> Preview Mashup</>
+            <><Play className="mr-2 h-4 w-4" aria-hidden="true" /> Preview Mashup</>
           )}
         </Button>
 
@@ -136,15 +158,17 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
           className="w-full bg-primary hover:bg-primary/90"
           onClick={() => mixMutation.mutate()}
           disabled={mixMutation.isPending}
+          aria-label="Save mashup"
+          aria-busy={mixMutation.isPending}
         >
           {mixMutation.isPending ? (
             <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Saving...
             </div>
           ) : (
             <>
-              <Save className="mr-2 h-4 w-4" />
+              <Save className="mr-2 h-4 w-4" aria-hidden="true" />
               Save Mashup
             </>
           )}
