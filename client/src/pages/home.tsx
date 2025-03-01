@@ -98,7 +98,7 @@ export default function Home() {
             ) : (
               <div className="mt-6 space-y-4">
                 {audioFiles?.map((file: AudioFile) => (
-                  <div key={file.id} className="flex flex-col gap-2 p-3 rounded-lg bg-muted">
+                  <div key={file.id} className="flex flex-col gap-2 p-3 rounded-lg bg-muted/80">
                     <div className="flex items-center gap-4">
                       <Music className="h-5 w-5" />
                       <div className="flex-1">
@@ -115,28 +115,32 @@ export default function Home() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-6 pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id={`vocals-${file.id}`}
-                          checked={stemSettings[file.id]?.extractVocals || false}
-                          onCheckedChange={(checked) => handleStemSettingsChange(file.id, 'extractVocals', checked)}
-                        />
-                        <Label htmlFor={`vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                          <Mic className="h-4 w-4" />
-                          Vocals
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id={`instrumental-${file.id}`}
-                          checked={stemSettings[file.id]?.extractInstrumental || false}
-                          onCheckedChange={(checked) => handleStemSettingsChange(file.id, 'extractInstrumental', checked)}
-                        />
-                        <Label htmlFor={`instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5">
-                          <Music2 className="h-4 w-4" />
-                          Instrumental
-                        </Label>
+                    <div className="flex items-center gap-4 pt-2 border-t border-border/50">
+                      <div className="flex items-center gap-6 px-4 py-2 rounded-md bg-background/50 border border-border">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id={`vocals-${file.id}`}
+                            checked={stemSettings[file.id]?.extractVocals || false}
+                            onCheckedChange={(checked) => handleStemSettingsChange(file.id, 'extractVocals', checked)}
+                            className="data-[state=checked]:bg-primary"
+                          />
+                          <Label htmlFor={`vocals-${file.id}`} className="cursor-pointer flex items-center gap-1.5 font-medium">
+                            <Mic className="h-4 w-4" />
+                            Vocals
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id={`instrumental-${file.id}`}
+                            checked={stemSettings[file.id]?.extractInstrumental || false}
+                            onCheckedChange={(checked) => handleStemSettingsChange(file.id, 'extractInstrumental', checked)}
+                            className="data-[state=checked]:bg-primary"
+                          />
+                          <Label htmlFor={`instrumental-${file.id}`} className="cursor-pointer flex items-center gap-1.5 font-medium">
+                            <Music2 className="h-4 w-4" />
+                            Instrumental
+                          </Label>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -148,7 +152,7 @@ export default function Home() {
           <Card className="p-6">
             <h2 className="text-2xl font-semibold mb-4">Mixer</h2>
             {selectedFiles.length > 0 ? (
-              <Mixer 
+              <Mixer
                 audioFiles={selectedFiles}
                 stemSettings={stemSettings}
               />
