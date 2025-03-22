@@ -72,15 +72,6 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <div className="p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-              MusicMashup
-            </h1>
-            <p className="text-muted-foreground">
-              Create unique mashups by mixing your favorite tracks
-            </p>
-          </div>
-
           <div className="grid gap-8 md:grid-cols-2">
             <Card className="p-6">
               <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
@@ -167,5 +158,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+
   );
 }
