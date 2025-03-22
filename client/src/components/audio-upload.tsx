@@ -1,7 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -13,6 +13,7 @@ interface AudioUploadProps {
 
 export default function AudioUpload({ onUpload }: AudioUploadProps) {
   const { toast } = useToast();
+  const [uploadingFiles, setUploadingFiles] = useState<Set<string>>(new Set());
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -42,20 +43,31 @@ export default function AudioUpload({ onUpload }: AudioUploadProps) {
     }
   });
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      uploadMutation.mutate(file);
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    const newUploadingFiles = new Set(uploadingFiles);
+
+    for (const file of acceptedFiles) {
+      newUploadingFiles.add(file.name);
+      setUploadingFiles(newUploadingFiles);
+
+      try {
+        await uploadMutation.mutateAsync(file);
+      } finally {
+        newUploadingFiles.delete(file.name);
+        setUploadingFiles(new Set(newUploadingFiles));
+      }
     }
-  }, [uploadMutation]);
+  }, [uploadMutation, uploadingFiles]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
       'audio/*': ['.mp3', '.wav']
     },
-    maxFiles: 1
+    multiple: true
   });
+
+  const isUploading = uploadingFiles.size > 0;
 
   return (
     <div
@@ -66,14 +78,23 @@ export default function AudioUpload({ onUpload }: AudioUploadProps) {
       <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
       <div className="space-y-2">
         <p className="font-medium">
-          {isDragActive ? "Drop the audio file here" : "Drag & drop an audio file"}
+          {isDragActive ? "Drop the audio files here" : "Drag & drop audio files"}
         </p>
         <p className="text-sm text-muted-foreground">
-          Supports MP3 and WAV formats
+          Supports multiple MP3 and WAV files
         </p>
-        <Button variant="outline" disabled={uploadMutation.isPending}>
-          {uploadMutation.isPending ? "Uploading..." : "Select File"}
-        </Button>
+        {isUploading ? (
+          <div className="space-y-2">
+            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              Uploading {uploadingFiles.size} file(s)...
+            </p>
+          </div>
+        ) : (
+          <Button variant="outline" disabled={isUploading}>
+            Select Files
+          </Button>
+        )}
       </div>
     </div>
   );

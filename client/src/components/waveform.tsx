@@ -35,18 +35,20 @@ export default function Waveform({
         cursorColor: progressColor,
         height,
         normalize: true,
-        minPxPerSec: 50,
+        minPxPerSec: 25, // Reduced to better handle long tracks
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
-        fillParent: true,
+        fillParent: false, // Changed to false to allow scrolling
         autoScroll: true,
         autoCenter: true,
         interact: !hideControls,
         peaks: false,
         forceDecode: true,
         splitChannels: false,
-        pixelRatio: 1
+        pixelRatio: 1,
+        scrollParent: true, // Enable scrolling for long tracks
+        maxCanvasWidth: 8000, // Limit max width to prevent performance issues
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
