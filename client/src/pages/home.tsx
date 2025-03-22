@@ -10,7 +10,6 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import NavBar from "@/components/nav-bar";
 
 export default function Home() {
   const [selectedFiles, setSelectedFiles] = useState<AudioFile[]>([]);
@@ -71,7 +70,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <NavBar />
       <div className="p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="text-center space-y-2">

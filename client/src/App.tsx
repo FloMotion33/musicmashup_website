@@ -10,6 +10,7 @@ import Help from "@/pages/help";
 import About from "@/pages/about";
 import Trending from "@/pages/trending";
 import NavBar from "@/components/nav-bar";
+import Login from "@/pages/login";
 
 function Router() {
   return (
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/help" component={Help} />
       <Route path="/about" component={About} />
       <Route path="/trending" component={Trending} />
+      <Route path="/login" component={Login} />
       <Route component={NotFound} />
     </Switch>
   );
