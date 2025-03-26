@@ -8,6 +8,9 @@
   }
 
   body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
 
 :root {
   --radius: 0.75rem;
@@ -71,8 +74,4 @@
 
 .animate-slide-in {
   animation: slideIn 0.3s ease-in-out;
-}
-
-    @apply font-sans antialiased bg-background text-foreground;
-  }
 }

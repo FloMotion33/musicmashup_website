@@ -6,6 +6,7 @@ import { Play, Pause, Save, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import Waveform from "./waveform";
+import AnimatedBackground from "./animated-background";
 
 interface MixerProps {
   audioFiles: AudioFile[];
@@ -110,6 +111,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
 
   return (
     <div className="space-y-6">
+      <AnimatedBackground isPlaying={isPlaying} />
       <div className="flex items-center justify-between gap-4 mb-4">
         <Button
           size="sm"
