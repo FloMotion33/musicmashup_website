@@ -11,7 +11,7 @@ interface WaveformProps {
   progressColor?: string;
   height?: number;
   hideControls?: boolean;
-  disableProgress?: boolean;
+  isPlaybackMaster?: boolean;
 }
 
 export default function Waveform({ 
@@ -23,7 +23,7 @@ export default function Waveform({
   progressColor = 'hsl(250 95% 60%)',
   height = 64,
   hideControls = false,
-  disableProgress = false
+  isPlaybackMaster = false
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
@@ -33,8 +33,8 @@ export default function Waveform({
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor,
-        progressColor: disableProgress ? waveColor : progressColor,
-        cursorColor: 'transparent',
+        progressColor: isPlaybackMaster ? progressColor : waveColor,
+        cursorColor: isPlaybackMaster ? progressColor : 'transparent',
         height,
         normalize: true,
         minPxPerSec: 10,
@@ -44,11 +44,8 @@ export default function Waveform({
         fillParent: true,
         autoScroll: false,
         autoCenter: false,
-        interact: !hideControls && !disableProgress,
-        peaks: false,
-        forceDecode: true,
-        splitChannels: false,
-        pixelRatio: 1,
+        interact: !hideControls && isPlaybackMaster,
+        peaks: [],
         responsive: true,
         partialRender: true,
       });
@@ -63,7 +60,7 @@ export default function Waveform({
         onReady?.();
       });
 
-      if (!disableProgress) {
+      if (isPlaybackMaster) {
         wavesurfer.current.on('play', () => onPlaybackChange?.(true));
         wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
         wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
@@ -73,17 +70,17 @@ export default function Waveform({
     return () => {
       wavesurfer.current?.destroy();
     };
-  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls, disableProgress]);
+  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls, isPlaybackMaster]);
 
   useEffect(() => {
-    if (wavesurfer.current && !disableProgress) {
+    if (wavesurfer.current) {
       if (playing && !wavesurfer.current.isPlaying()) {
         wavesurfer.current.play();
       } else if (!playing && wavesurfer.current.isPlaying()) {
         wavesurfer.current.pause();
       }
     }
-  }, [playing, disableProgress]);
+  }, [playing]);
 
   return (
     <div className="relative w-full">
