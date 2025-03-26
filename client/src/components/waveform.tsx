@@ -11,6 +11,7 @@ interface WaveformProps {
   progressColor?: string;
   height?: number;
   hideControls?: boolean;
+  disableProgress?: boolean;
 }
 
 export default function Waveform({ 
@@ -21,7 +22,8 @@ export default function Waveform({
   waveColor = 'hsl(250 95% 60% / 0.4)',
   progressColor = 'hsl(250 95% 60%)',
   height = 64,
-  hideControls = false
+  hideControls = false,
+  disableProgress = false
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
@@ -31,24 +33,24 @@ export default function Waveform({
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor,
-        progressColor,
-        cursorColor: progressColor,
+        progressColor: disableProgress ? waveColor : progressColor,
+        cursorColor: 'transparent',
         height,
         normalize: true,
-        minPxPerSec: 10, 
+        minPxPerSec: 10,
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
-        fillParent: true, 
-        autoScroll: true,
-        autoCenter: false, 
-        interact: !hideControls,
+        fillParent: true,
+        autoScroll: false,
+        autoCenter: false,
+        interact: !hideControls && !disableProgress,
         peaks: false,
         forceDecode: true,
         splitChannels: false,
         pixelRatio: 1,
-        responsive: true, 
-        partialRender: true, 
+        responsive: true,
+        partialRender: true,
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
@@ -58,29 +60,30 @@ export default function Waveform({
         const containerWidth = waveformRef.current?.clientWidth || 0;
         const zoom = containerWidth / duration;
         wavesurfer.current?.zoom(zoom);
-
         onReady?.();
       });
 
-      wavesurfer.current.on('play', () => onPlaybackChange?.(true));
-      wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
-      wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
+      if (!disableProgress) {
+        wavesurfer.current.on('play', () => onPlaybackChange?.(true));
+        wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
+        wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
+      }
     }
 
     return () => {
       wavesurfer.current?.destroy();
     };
-  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
+  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls, disableProgress]);
 
   useEffect(() => {
-    if (wavesurfer.current) {
+    if (wavesurfer.current && !disableProgress) {
       if (playing && !wavesurfer.current.isPlaying()) {
         wavesurfer.current.play();
       } else if (!playing && wavesurfer.current.isPlaying()) {
         wavesurfer.current.pause();
       }
     }
-  }, [playing]);
+  }, [playing, disableProgress]);
 
   return (
     <div className="relative w-full">

@@ -108,6 +108,9 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     );
   }
 
+  // Get the first audio file for the master playback
+  const masterAudioFile = audioFiles[0];
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -146,6 +149,21 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
         </Button>
       </div>
 
+      {/* Master playback waveform */}
+      {masterAudioFile && (
+        <div className="rounded-lg border p-4 mb-4">
+          <Waveform 
+            audioFile={masterAudioFile}
+            playing={isPlaying}
+            onReady={handleWaveformReady}
+            height={48}
+            waveColor="hsl(250 95% 60% / 0.2)"
+            progressColor="hsl(250 95% 60%)"
+          />
+        </div>
+      )}
+
+      {/* Individual track waveforms without progress */}
       <div className="rounded-lg border">
         {audioFiles.map((file) => (
           <div key={file.id} className="p-4 border-b last:border-b-0">
@@ -179,6 +197,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                     progressColor="hsl(250 95% 60%)"
                     height={48}
                     hideControls
+                    disableProgress
                   />
                 </div>
               )}
@@ -193,6 +212,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                     progressColor="hsl(250 95% 60%)"
                     height={48}
                     hideControls
+                    disableProgress
                   />
                 </div>
               )}
