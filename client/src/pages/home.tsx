@@ -73,11 +73,11 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background/50 relative">
       <div className="p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <div className="grid gap-8 md:grid-cols-2">
-            <Card className="p-6">
+            <Card className="p-6 backdrop-blur-sm bg-background/80">
               <h2 className="text-2xl font-semibold mb-4">Upload Audio</h2>
               <AudioUpload onUpload={handleUpload} />
 
@@ -145,7 +145,7 @@ export default function Home() {
               )}
             </Card>
 
-            <Card className="p-6">
+            <Card className="p-6 backdrop-blur-sm bg-background/80">
               <h2 className="text-2xl font-semibold mb-4">Mixer</h2>
               <Mixer
                 audioFiles={selectedFiles}
