@@ -44,10 +44,8 @@ export default function Waveform({
         fillParent: true,
         autoScroll: false,
         autoCenter: false,
-        interact: !hideControls && isPlaybackMaster,
-        peaks: [],
-        responsive: true,
-        partialRender: true,
+        interact: isPlaybackMaster,
+        plugins: []
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);

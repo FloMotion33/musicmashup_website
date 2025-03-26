@@ -151,6 +151,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
         <Waveform 
           audioFile={audioFiles[0]}
           playing={isPlaying}
+          onPlaybackChange={setIsPlaying}
           onReady={handleWaveformReady}
           height={48}
           waveColor="hsl(250 95% 60% / 0.2)"
