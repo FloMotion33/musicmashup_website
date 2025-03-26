@@ -35,25 +35,30 @@ export default function Waveform({
         cursorColor: progressColor,
         height,
         normalize: true,
-        minPxPerSec: 25, // Reduced to better handle long tracks
+        minPxPerSec: 10, 
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
-        fillParent: false, // Changed to false to allow scrolling
+        fillParent: true, 
         autoScroll: true,
-        autoCenter: true,
+        autoCenter: false, 
         interact: !hideControls,
         peaks: false,
         forceDecode: true,
         splitChannels: false,
         pixelRatio: 1,
-        scrollParent: true, // Enable scrolling for long tracks
-        maxCanvasWidth: 8000, // Limit max width to prevent performance issues
+        responsive: true, 
+        partialRender: true, 
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
 
       wavesurfer.current.on('ready', () => {
+        const duration = wavesurfer.current?.getDuration() || 0;
+        const containerWidth = waveformRef.current?.clientWidth || 0;
+        const zoom = containerWidth / duration;
+        wavesurfer.current?.zoom(zoom);
+
         onReady?.();
       });
 
@@ -67,7 +72,6 @@ export default function Waveform({
     };
   }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
 
-  // Control playback from parent
   useEffect(() => {
     if (wavesurfer.current) {
       if (playing && !wavesurfer.current.isPlaying()) {
@@ -79,6 +83,12 @@ export default function Waveform({
   }, [playing]);
 
   return (
-    <div ref={waveformRef} className="rounded-lg overflow-hidden" style={{ height }} />
+    <div className="relative w-full">
+      <div 
+        ref={waveformRef} 
+        className="rounded-lg overflow-hidden" 
+        style={{ height }}
+      />
+    </div>
   );
 }

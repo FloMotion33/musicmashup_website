@@ -21,6 +21,14 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   const [readyCount, setReadyCount] = useState(0);
   const { toast } = useToast();
 
+  // Count total stems that need to be loaded
+  const totalStems = audioFiles.reduce((count, file) => {
+    const settings = stemSettings[file.id] || {};
+    return count + (settings.extractVocals ? 1 : 0) + (settings.extractInstrumental ? 1 : 0);
+  }, 0);
+
+  const hasTwoOrMoreStems = totalStems >= 2;
+
   useEffect(() => {
     setVolumes(prev => {
       const newVolumes: Record<number, number> = {};
@@ -32,7 +40,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
 
     setIsPlaying(false);
     setReadyCount(0);
-  }, [audioFiles]);
+  }, [audioFiles, stemSettings]);
 
   const mixMutation = useMutation({
     mutationFn: async () => {
@@ -87,13 +95,39 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   }, []);
 
   const togglePlayback = useCallback(() => {
-    if (readyCount === audioFiles.length) {
+    if (readyCount === totalStems) {
       setIsPlaying(!isPlaying);
     }
-  }, [readyCount, audioFiles.length, isPlaying]);
+  }, [readyCount, totalStems, isPlaying]);
+
+  if (!hasTwoOrMoreStems) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Please select at least two stems from your audio files to start mixing
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-4">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={togglePlayback}
+          disabled={readyCount !== totalStems}
+          className="min-w-[100px]"
+        >
+          {readyCount !== totalStems ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isPlaying ? (
+            <><Pause className="h-4 w-4 mr-2" /> Stop</>
+          ) : (
+            <><Play className="h-4 w-4 mr-2" /> Play</>
+          )}
+        </Button>
+      </div>
+
       <div className="relative border rounded-lg bg-background/5 p-6">
         <div className="space-y-8">
           {audioFiles.map((file) => (
@@ -154,22 +188,6 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
               )}
             </div>
           ))}
-        </div>
-
-        <div className="absolute top-4 left-4 flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={togglePlayback}
-            disabled={readyCount !== audioFiles.length}
-          >
-            {isPlaying ? (
-              <><Pause className="h-4 w-4" /></>
-            ) : (
-              <><Play className="h-4 w-4" /></>
-            )}
-          </Button>
-          <span className="text-sm font-medium">00:00</span>
         </div>
       </div>
 

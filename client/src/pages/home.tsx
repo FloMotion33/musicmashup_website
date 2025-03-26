@@ -33,6 +33,10 @@ export default function Home() {
     onSuccess: (_, deletedFileId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/audio-files"] });
       setSelectedFiles(prev => prev.filter(file => file.id !== deletedFileId));
+      setStemSettings(prev => {
+        const { [deletedFileId]: _, ...rest } = prev;
+        return rest;
+      });
       toast({
         title: "File deleted",
         description: "Audio file has been removed"
@@ -143,21 +147,14 @@ export default function Home() {
 
             <Card className="p-6">
               <h2 className="text-2xl font-semibold mb-4">Mixer</h2>
-              {selectedFiles.length > 0 ? (
-                <Mixer
-                  audioFiles={selectedFiles}
-                  stemSettings={stemSettings}
-                />
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  Select audio files to start mixing
-                </div>
-              )}
+              <Mixer
+                audioFiles={selectedFiles}
+                stemSettings={stemSettings}
+              />
             </Card>
           </div>
         </div>
       </div>
     </div>
-
   );
 }
