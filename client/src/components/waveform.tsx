@@ -27,56 +27,68 @@ export default function Waveform({
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
+  const loadedRef = useRef(false);
 
+  // Initialize WaveSurfer instance
   useEffect(() => {
-    if (waveformRef.current) {
-      wavesurfer.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor,
-        progressColor: isPlaybackMaster ? progressColor : waveColor,
-        cursorColor: isPlaybackMaster ? progressColor : 'transparent',
-        height,
-        normalize: true,
-        minPxPerSec: 10,
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
-        fillParent: true,
-        autoScroll: false,
-        autoCenter: false,
-        interact: isPlaybackMaster,
-        plugins: []
-      });
+    if (!waveformRef.current || loadedRef.current) return;
 
-      wavesurfer.current.load(`/api/audio/${audioFile.id}`);
+    wavesurfer.current = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor,
+      progressColor: isPlaybackMaster ? progressColor : waveColor,
+      cursorColor: isPlaybackMaster ? progressColor : 'transparent',
+      height,
+      normalize: true,
+      minPxPerSec: 10,
+      barWidth: 2,
+      barGap: 1,
+      barRadius: 2,
+      fillParent: true,
+      autoScroll: false,
+      autoCenter: false,
+      interact: isPlaybackMaster,
+      plugins: []
+    });
 
-      wavesurfer.current.on('ready', () => {
-        const duration = wavesurfer.current?.getDuration() || 0;
-        const containerWidth = waveformRef.current?.clientWidth || 0;
-        const zoom = containerWidth / duration;
-        wavesurfer.current?.zoom(zoom);
-        onReady?.(wavesurfer.current);  
-      });
+    const ws = wavesurfer.current;
 
-      if (isPlaybackMaster) {
-        wavesurfer.current.on('play', () => onPlaybackChange?.(true));
-        wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
-        wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
-      }
+    ws.on('ready', () => {
+      const duration = ws.getDuration();
+      const containerWidth = waveformRef.current?.clientWidth || 0;
+      const zoom = containerWidth / duration;
+      ws.zoom(zoom);
+      loadedRef.current = true;
+      if (onReady) onReady(ws);
+    });
+
+    if (isPlaybackMaster) {
+      ws.on('play', () => onPlaybackChange?.(true));
+      ws.on('pause', () => onPlaybackChange?.(false));
+      ws.on('finish', () => onPlaybackChange?.(false));
     }
 
-    return () => {
-      wavesurfer.current?.destroy();
-    };
-  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls, isPlaybackMaster]);
+    // Load audio file
+    ws.load(`/api/audio/${audioFile.id}`);
 
-  useEffect(() => {
-    if (wavesurfer.current) {
-      if (playing && !wavesurfer.current.isPlaying()) {
-        wavesurfer.current.play();
-      } else if (!playing && wavesurfer.current.isPlaying()) {
-        wavesurfer.current.pause();
+    // Cleanup
+    return () => {
+      if (ws) {
+        ws.pause();
+        ws.destroy();
+        loadedRef.current = false;
       }
+    };
+  }, [audioFile.id, waveColor, progressColor, height, hideControls, isPlaybackMaster, onReady]);
+
+  // Handle play/pause state
+  useEffect(() => {
+    if (!wavesurfer.current || !loadedRef.current) return;
+
+    if (playing && !wavesurfer.current.isPlaying()) {
+      wavesurfer.current.play();
+    } else if (!playing && wavesurfer.current.isPlaying()) {
+      wavesurfer.current.pause();
     }
   }, [playing]);
 
