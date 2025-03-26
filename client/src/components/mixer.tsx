@@ -110,7 +110,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center justify-between gap-4 mb-4">
         <Button
           size="sm"
           variant="outline"
@@ -126,88 +126,93 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
             <><Play className="h-4 w-4 mr-2" /> Play</>
           )}
         </Button>
+
+        <Button 
+          className="bg-primary hover:bg-primary/90"
+          onClick={() => mixMutation.mutate()}
+          disabled={mixMutation.isPending}
+        >
+          {mixMutation.isPending ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </div>
+          ) : (
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Mashup
+            </>
+          )}
+        </Button>
       </div>
 
-      <div className="relative border rounded-lg bg-background/5 p-6">
-        <div className="space-y-8">
-          {audioFiles.map((file) => (
-            <div key={file.id} className="min-h-[200px] flex flex-col gap-6">
+      <div className="border rounded-lg bg-background/5 divide-y">
+        {audioFiles.map((file) => (
+          <div key={file.id} className="p-6">
+            <div className="font-medium mb-4">{file.filename}</div>
+            <div className="space-y-6">
               {stemSettings[file.id]?.extractVocals && (
-                <div className="flex items-start gap-4 h-[120px]">
-                  <div className="flex-1 h-full">
-                    <div className="relative h-full">
+                <div className="flex items-start gap-6">
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground mb-2">Vocals</div>
+                    <div className="relative">
                       <Waveform 
                         audioFile={file}
                         playing={isPlaying}
                         onReady={handleWaveformReady}
                         waveColor="hsl(250 95% 60% / 0.6)"
                         progressColor="hsl(250 95% 60%)"
-                        height={120}
+                        height={64}
                         hideControls
                       />
                     </div>
                   </div>
-                  <div className="w-24 h-full flex items-center">
+                  <div className="w-24">
+                    <div className="text-sm text-muted-foreground mb-2">Volume</div>
                     <Slider
                       orientation="vertical"
                       value={[volumes[file.id] * 100]}
                       onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
                       max={100}
                       step={1}
-                      className="h-full"
+                      className="h-[64px]"
                     />
                   </div>
                 </div>
               )}
               {stemSettings[file.id]?.extractInstrumental && (
-                <div className="flex items-start gap-4 h-[120px]">
-                  <div className="flex-1 h-full">
-                    <div className="relative h-full">
+                <div className="flex items-start gap-6">
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground mb-2">Instrumental</div>
+                    <div className="relative">
                       <Waveform 
                         audioFile={file}
                         playing={isPlaying}
                         onReady={handleWaveformReady}
                         waveColor="hsl(250 95% 60% / 0.3)"
                         progressColor="hsl(250 95% 60%)"
-                        height={120}
+                        height={64}
                         hideControls
                       />
                     </div>
                   </div>
-                  <div className="w-24 h-full flex items-center">
+                  <div className="w-24">
+                    <div className="text-sm text-muted-foreground mb-2">Volume</div>
                     <Slider
                       orientation="vertical"
                       value={[volumes[file.id] * 100]}
                       onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
                       max={100}
                       step={1}
-                      className="h-full"
+                      className="h-[64px]"
                     />
                   </div>
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      </div>
-
-      <Button 
-        className="w-full bg-primary hover:bg-primary/90"
-        onClick={() => mixMutation.mutate()}
-        disabled={mixMutation.isPending}
-      >
-        {mixMutation.isPending ? (
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Saving...
           </div>
-        ) : (
-          <>
-            <Save className="mr-2 h-4 w-4" />
-            Save Mashup
-          </>
-        )}
-      </Button>
+        ))}
+      </div>
     </div>
   );
 }
