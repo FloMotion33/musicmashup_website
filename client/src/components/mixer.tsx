@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { type AudioFile } from "@shared/schema";
 import { Play, Pause, Save, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAudioAnalysis } from "@/hooks/use-audio-analysis";
+import { ResponsiveBackground } from "./responsive-background";
 import Waveform from "./waveform";
 
 interface MixerProps {
@@ -19,7 +21,10 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   const [volumes, setVolumes] = useState<Record<number, number>>({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [readyCount, setReadyCount] = useState(0);
+  const masterWaveformRef = useRef<any>(null);
   const { toast } = useToast();
+
+  const amplitude = useAudioAnalysis(masterWaveformRef.current);
 
   // Count total stems that need to be loaded
   const totalStems = audioFiles.reduce((count, file) => {
@@ -109,110 +114,116 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={togglePlayback}
-          disabled={readyCount !== totalStems}
-          className="min-w-[100px]"
-        >
-          {readyCount !== totalStems ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : isPlaying ? (
-            <><Pause className="h-4 w-4 mr-2" /> Stop</>
-          ) : (
-            <><Play className="h-4 w-4 mr-2" /> Play</>
-          )}
-        </Button>
-
-        <Button 
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => mixMutation.mutate()}
-          disabled={mixMutation.isPending}
-        >
-          {mixMutation.isPending ? (
-            <div className="flex items-center gap-2">
+    <>
+      <ResponsiveBackground amplitude={amplitude} />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={togglePlayback}
+            disabled={readyCount !== totalStems}
+            className="min-w-[100px]"
+          >
+            {readyCount !== totalStems ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
-            </div>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Save Mashup
-            </>
-          )}
-        </Button>
-      </div>
+            ) : isPlaying ? (
+              <><Pause className="h-4 w-4 mr-2" /> Stop</>
+            ) : (
+              <><Play className="h-4 w-4 mr-2" /> Play</>
+            )}
+          </Button>
 
-      {/* Master playback waveform */}
-      <div className="rounded-lg border p-4">
-        <Waveform 
-          audioFile={audioFiles[0]}
-          playing={isPlaying}
-          onPlaybackChange={setIsPlaying}
-          onReady={handleWaveformReady}
-          height={48}
-          waveColor="hsl(250 95% 60% / 0.2)"
-          progressColor="hsl(250 95% 60%)"
-          isPlaybackMaster={true}
-        />
-      </div>
+          <Button
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => mixMutation.mutate()}
+            disabled={mixMutation.isPending}
+          >
+            {mixMutation.isPending ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </div>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Mashup
+              </>
+            )}
+          </Button>
+        </div>
 
-      {/* Track list */}
-      <div className="rounded-lg border divide-y">
-        {audioFiles.map((file) => (
-          <div key={file.id} className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <span className="font-medium">{file.filename}</span>
-              <div className="flex items-center gap-4">
-                {(stemSettings[file.id]?.extractVocals || stemSettings[file.id]?.extractInstrumental) && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Volume</span>
-                    <Slider
-                      value={[volumes[file.id] * 100]}
-                      onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
-                      max={100}
-                      step={1}
-                      className="w-24"
+        {/* Master playback waveform */}
+        <div className="rounded-lg border p-4">
+          <Waveform
+            audioFile={audioFiles[0]}
+            playing={isPlaying}
+            onPlaybackChange={setIsPlaying}
+            onReady={(ws) => {
+              masterWaveformRef.current = ws;
+              handleWaveformReady();
+            }}
+            height={48}
+            waveColor="hsl(250 95% 60% / 0.2)"
+            progressColor="hsl(250 95% 60%)"
+            isPlaybackMaster={true}
+          />
+        </div>
+
+        {/* Track list */}
+        <div className="rounded-lg border divide-y">
+          {audioFiles.map((file) => (
+            <div key={file.id} className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-medium">{file.filename}</span>
+                <div className="flex items-center gap-4">
+                  {(stemSettings[file.id]?.extractVocals || stemSettings[file.id]?.extractInstrumental) && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Volume</span>
+                      <Slider
+                        value={[volumes[file.id] * 100]}
+                        onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
+                        max={100}
+                        step={1}
+                        className="w-24"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {stemSettings[file.id]?.extractVocals && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Vocals</div>
+                    <Waveform
+                      audioFile={file}
+                      playing={isPlaying}
+                      onReady={handleWaveformReady}
+                      waveColor="hsl(250 95% 60% / 0.6)"
+                      height={48}
+                      hideControls
+                    />
+                  </div>
+                )}
+                {stemSettings[file.id]?.extractInstrumental && (
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Instrumental</div>
+                    <Waveform
+                      audioFile={file}
+                      playing={isPlaying}
+                      onReady={handleWaveformReady}
+                      waveColor="hsl(250 95% 60% / 0.3)"
+                      height={48}
+                      hideControls
                     />
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="space-y-3">
-              {stemSettings[file.id]?.extractVocals && (
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Vocals</div>
-                  <Waveform 
-                    audioFile={file}
-                    playing={isPlaying}
-                    onReady={handleWaveformReady}
-                    waveColor="hsl(250 95% 60% / 0.6)"
-                    height={48}
-                    hideControls
-                  />
-                </div>
-              )}
-              {stemSettings[file.id]?.extractInstrumental && (
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Instrumental</div>
-                  <Waveform 
-                    audioFile={file}
-                    playing={isPlaying}
-                    onReady={handleWaveformReady}
-                    waveColor="hsl(250 95% 60% / 0.3)"
-                    height={48}
-                    hideControls
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

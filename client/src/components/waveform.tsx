@@ -6,7 +6,7 @@ interface WaveformProps {
   audioFile: AudioFile;
   onPlaybackChange?: (isPlaying: boolean) => void;
   playing?: boolean;
-  onReady?: () => void;
+  onReady?: (wavesurfer: WaveSurfer) => void;  
   waveColor?: string;
   progressColor?: string;
   height?: number;
@@ -55,7 +55,7 @@ export default function Waveform({
         const containerWidth = waveformRef.current?.clientWidth || 0;
         const zoom = containerWidth / duration;
         wavesurfer.current?.zoom(zoom);
-        onReady?.();
+        onReady?.(wavesurfer.current);  
       });
 
       if (isPlaybackMaster) {
