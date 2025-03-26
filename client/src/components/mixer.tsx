@@ -109,8 +109,8 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4 mb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
         <Button
           size="sm"
           variant="outline"
@@ -146,67 +146,54 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
         </Button>
       </div>
 
-      <div className="border rounded-lg bg-background/5 divide-y">
+      <div className="rounded-lg border">
         {audioFiles.map((file) => (
-          <div key={file.id} className="p-6">
-            <div className="font-medium mb-4">{file.filename}</div>
-            <div className="space-y-6">
-              {stemSettings[file.id]?.extractVocals && (
-                <div className="flex items-start gap-6">
-                  <div className="flex-1">
-                    <div className="text-sm text-muted-foreground mb-2">Vocals</div>
-                    <div className="relative">
-                      <Waveform 
-                        audioFile={file}
-                        playing={isPlaying}
-                        onReady={handleWaveformReady}
-                        waveColor="hsl(250 95% 60% / 0.6)"
-                        progressColor="hsl(250 95% 60%)"
-                        height={64}
-                        hideControls
-                      />
-                    </div>
-                  </div>
-                  <div className="w-24">
-                    <div className="text-sm text-muted-foreground mb-2">Volume</div>
+          <div key={file.id} className="p-4 border-b last:border-b-0">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-medium">{file.filename}</span>
+              <div className="flex items-center gap-4">
+                {(stemSettings[file.id]?.extractVocals || stemSettings[file.id]?.extractInstrumental) && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Volume</span>
                     <Slider
-                      orientation="vertical"
                       value={[volumes[file.id] * 100]}
                       onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
                       max={100}
                       step={1}
-                      className="h-[64px]"
+                      className="w-24"
                     />
                   </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {stemSettings[file.id]?.extractVocals && (
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Vocals</div>
+                  <Waveform 
+                    audioFile={file}
+                    playing={isPlaying}
+                    onReady={handleWaveformReady}
+                    waveColor="hsl(250 95% 60% / 0.6)"
+                    progressColor="hsl(250 95% 60%)"
+                    height={48}
+                    hideControls
+                  />
                 </div>
               )}
               {stemSettings[file.id]?.extractInstrumental && (
-                <div className="flex items-start gap-6">
-                  <div className="flex-1">
-                    <div className="text-sm text-muted-foreground mb-2">Instrumental</div>
-                    <div className="relative">
-                      <Waveform 
-                        audioFile={file}
-                        playing={isPlaying}
-                        onReady={handleWaveformReady}
-                        waveColor="hsl(250 95% 60% / 0.3)"
-                        progressColor="hsl(250 95% 60%)"
-                        height={64}
-                        hideControls
-                      />
-                    </div>
-                  </div>
-                  <div className="w-24">
-                    <div className="text-sm text-muted-foreground mb-2">Volume</div>
-                    <Slider
-                      orientation="vertical"
-                      value={[volumes[file.id] * 100]}
-                      onValueChange={(value) => updateVolume(file.id, value[0] / 100)}
-                      max={100}
-                      step={1}
-                      className="h-[64px]"
-                    />
-                  </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Instrumental</div>
+                  <Waveform 
+                    audioFile={file}
+                    playing={isPlaying}
+                    onReady={handleWaveformReady}
+                    waveColor="hsl(250 95% 60% / 0.3)"
+                    progressColor="hsl(250 95% 60%)"
+                    height={48}
+                    hideControls
+                  />
                 </div>
               )}
             </div>
