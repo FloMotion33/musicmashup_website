@@ -6,12 +6,11 @@ interface WaveformProps {
   audioFile: AudioFile;
   onPlaybackChange?: (isPlaying: boolean) => void;
   playing?: boolean;
-  onReady?: (wavesurfer: WaveSurfer) => void;  
+  onReady?: () => void;
   waveColor?: string;
   progressColor?: string;
   height?: number;
   hideControls?: boolean;
-  isPlaybackMaster?: boolean;
 }
 
 export default function Waveform({ 
@@ -22,73 +21,64 @@ export default function Waveform({
   waveColor = 'hsl(250 95% 60% / 0.4)',
   progressColor = 'hsl(250 95% 60%)',
   height = 64,
-  hideControls = false,
-  isPlaybackMaster = false
+  hideControls = false
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
-  const loadedRef = useRef(false);
 
-  // Initialize WaveSurfer instance
   useEffect(() => {
-    if (!waveformRef.current || loadedRef.current) return;
+    if (waveformRef.current) {
+      wavesurfer.current = WaveSurfer.create({
+        container: waveformRef.current,
+        waveColor,
+        progressColor,
+        cursorColor: progressColor,
+        height,
+        normalize: true,
+        minPxPerSec: 10, 
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        fillParent: true, 
+        autoScroll: true,
+        autoCenter: false, 
+        interact: !hideControls,
+        peaks: false,
+        forceDecode: true,
+        splitChannels: false,
+        pixelRatio: 1,
+        responsive: true, 
+        partialRender: true, 
+      });
 
-    wavesurfer.current = WaveSurfer.create({
-      container: waveformRef.current,
-      waveColor,
-      progressColor: isPlaybackMaster ? progressColor : waveColor,
-      cursorColor: isPlaybackMaster ? progressColor : 'transparent',
-      height,
-      normalize: true,
-      minPxPerSec: 10,
-      barWidth: 2,
-      barGap: 1,
-      barRadius: 2,
-      fillParent: true,
-      autoScroll: false,
-      autoCenter: false,
-      interact: isPlaybackMaster,
-      plugins: []
-    });
+      wavesurfer.current.load(`/api/audio/${audioFile.id}`);
 
-    const ws = wavesurfer.current;
+      wavesurfer.current.on('ready', () => {
+        const duration = wavesurfer.current?.getDuration() || 0;
+        const containerWidth = waveformRef.current?.clientWidth || 0;
+        const zoom = containerWidth / duration;
+        wavesurfer.current?.zoom(zoom);
 
-    ws.on('ready', () => {
-      const duration = ws.getDuration();
-      const containerWidth = waveformRef.current?.clientWidth || 0;
-      const zoom = containerWidth / duration;
-      ws.zoom(zoom);
-      loadedRef.current = true;
-      if (onReady) onReady(ws);
-    });
+        onReady?.();
+      });
 
-    if (isPlaybackMaster) {
-      ws.on('play', () => onPlaybackChange?.(true));
-      ws.on('pause', () => onPlaybackChange?.(false));
-      ws.on('finish', () => onPlaybackChange?.(false));
+      wavesurfer.current.on('play', () => onPlaybackChange?.(true));
+      wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
+      wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
     }
 
-    // Load audio file
-    ws.load(`/api/audio/${audioFile.id}`);
-
-    // Cleanup
     return () => {
-      if (ws) {
-        ws.pause();
-        ws.destroy();
-        loadedRef.current = false;
-      }
+      wavesurfer.current?.destroy();
     };
-  }, [audioFile.id, waveColor, progressColor, height, hideControls, isPlaybackMaster, onReady]);
+  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
 
-  // Handle play/pause state
   useEffect(() => {
-    if (!wavesurfer.current || !loadedRef.current) return;
-
-    if (playing && !wavesurfer.current.isPlaying()) {
-      wavesurfer.current.play();
-    } else if (!playing && wavesurfer.current.isPlaying()) {
-      wavesurfer.current.pause();
+    if (wavesurfer.current) {
+      if (playing && !wavesurfer.current.isPlaying()) {
+        wavesurfer.current.play();
+      } else if (!playing && wavesurfer.current.isPlaying()) {
+        wavesurfer.current.pause();
+      }
     }
   }, [playing]);
 

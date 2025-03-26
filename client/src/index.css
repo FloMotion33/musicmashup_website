@@ -8,9 +8,6 @@
   }
 
   body {
-    @apply min-h-screen font-sans antialiased text-foreground animate-gradient;
-  }
-}
 
 :root {
   --radius: 0.75rem;
@@ -33,7 +30,29 @@
   --border: 240 4% 16%;
   --input: 240 4% 16%;
   --ring: 250 95% 65%;
-  --amplitude: 0;
+}
+
+.dark * {
+  --radius: 0.75rem;
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 250 95% 65%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 4% 16%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 250 95% 65%;
 }
 
 @keyframes fadeIn {
@@ -46,12 +65,6 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
@@ -60,8 +73,6 @@
   animation: slideIn 0.3s ease-in-out;
 }
 
-.animate-gradient {
-  animation: gradientShift 15s ease infinite;
-  background-size: 200% 200%;
-  background-attachment: fixed; /* Added this to keep the original functionality*/
+    @apply font-sans antialiased bg-background text-foreground;
+  }
 }
