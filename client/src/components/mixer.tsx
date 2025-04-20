@@ -220,22 +220,12 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
             )}
           </Button>
           
-          <TabsList className="grid grid-cols-2 w-[200px]">
-            <TabsTrigger 
-              value="tracks" 
-              onClick={() => setActiveTab("tracks")}
-              className={activeTab === "tracks" ? "bg-primary text-primary-foreground" : ""}
-            >
-              Tracks
-            </TabsTrigger>
-            <TabsTrigger 
-              value="mixer" 
-              onClick={() => setActiveTab("mixer")}
-              className={activeTab === "mixer" ? "bg-primary text-primary-foreground" : ""}
-            >
-              Mixer
-            </TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="tracks" value={activeTab} onValueChange={setActiveTab} className="w-[200px]">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="tracks">Tracks</TabsTrigger>
+              <TabsTrigger value="mixer">Mixer</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         <Button 

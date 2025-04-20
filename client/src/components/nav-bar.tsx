@@ -31,7 +31,7 @@ export default function NavBar() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <Link href="/products/mashup">
+                <Link href="/">
                   <DropdownMenuItem className="cursor-pointer">
                     Audio Mashup Creator
                   </DropdownMenuItem>

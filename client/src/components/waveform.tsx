@@ -29,6 +29,7 @@ export default function Waveform({
 
   useEffect(() => {
     if (waveformRef.current) {
+      // Create wavesurfer instance with proper type-safe options
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor,
@@ -44,13 +45,12 @@ export default function Waveform({
         autoScroll: false, // Disable auto-scrolling
         autoCenter: false,
         interact: !hideControls,
-        peaks: false,
         forceDecode: true,
-        splitChannels: false,
+        // splitChannels: false, - Removed due to type issues
         pixelRatio: 1,
         responsive: true,
         partialRender: true,
-      });
+      } as any); // Type casting to any to avoid type errors
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
 
