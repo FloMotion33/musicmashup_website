@@ -52,6 +52,7 @@ export default function Home() {
   });
 
   const handleStemSettingsChange = (fileId: number, setting: 'extractVocals' | 'extractInstrumental', value: boolean) => {
+    // Update stem settings
     setStemSettings(prev => ({
       ...prev,
       [fileId]: {
@@ -59,6 +60,20 @@ export default function Home() {
         [setting]: value
       }
     }));
+    
+    // Add the file to selected files if not already there
+    // This ensures files with selected stems appear in the mixer
+    const file = audioFiles?.find((f: AudioFile) => f.id === fileId);
+    if (file && !selectedFiles.some(selected => selected.id === fileId)) {
+      setSelectedFiles(prev => [...prev, file]);
+    }
+    
+    // If both stems are turned off, remove the file from selection
+    if (!value && 
+        ((setting === 'extractVocals' && !stemSettings[fileId]?.extractInstrumental) || 
+         (setting === 'extractInstrumental' && !stemSettings[fileId]?.extractVocals))) {
+      setSelectedFiles(prev => prev.filter(f => f.id !== fileId));
+    }
   };
 
   const handleUpload = (file: AudioFile) => {
