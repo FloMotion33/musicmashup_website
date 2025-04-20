@@ -19,7 +19,7 @@ export default function Home() {
   }>>({});
   const { toast } = useToast();
 
-  const { data: audioFiles, isLoading } = useQuery({
+  const { data: audioFiles = [], isLoading } = useQuery<AudioFile[]>({
     queryKey: ["/api/audio-files"]
   });
 
@@ -113,7 +113,7 @@ export default function Home() {
                       <div className="flex items-center gap-4">
                         <Music className="h-5 w-5" />
                         <div className="flex-1">
-                          <p className="font-medium">{file.filename}</p>
+                          <p className="font-medium truncate max-w-[200px]">{file.filename}</p>
                           <p className="text-sm text-muted-foreground">BPM: {file.bpm}</p>
                         </div>
                         <Button

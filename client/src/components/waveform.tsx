@@ -6,11 +6,12 @@ interface WaveformProps {
   audioFile: AudioFile;
   onPlaybackChange?: (isPlaying: boolean) => void;
   playing?: boolean;
-  onReady?: () => void;
+  onReady?: (duration: number) => void; // Updated to pass duration when ready
   waveColor?: string;
   progressColor?: string;
   height?: number;
   hideControls?: boolean;
+  currentTime?: number; // Add currentTime prop for synchronized playback
 }
 
 export default function Waveform({ 
@@ -21,12 +22,15 @@ export default function Waveform({
   waveColor = 'hsl(250 95% 60% / 0.4)',
   progressColor = 'hsl(250 95% 60%)',
   height = 64,
-  hideControls = false
+  hideControls = false,
+  currentTime
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
   const [loaded, setLoaded] = useState(false);
-
+  const audioId = audioFile.id; // Get id for API call
+  
+  // Setup waveform
   useEffect(() => {
     if (waveformRef.current) {
       // Create wavesurfer instance with proper type-safe options
@@ -34,7 +38,7 @@ export default function Waveform({
         container: waveformRef.current,
         waveColor,
         progressColor,
-        cursorColor: progressColor,
+        cursorColor: 'transparent', // Hide default cursor
         height,
         normalize: true,
         minPxPerSec: 1, // Allow very compressed view 
@@ -46,13 +50,12 @@ export default function Waveform({
         autoCenter: false,
         interact: !hideControls,
         forceDecode: true,
-        // splitChannels: false, - Removed due to type issues
         pixelRatio: 1,
         responsive: true,
         partialRender: true,
       } as any); // Type casting to any to avoid type errors
 
-      wavesurfer.current.load(`/api/audio/${audioFile.id}`);
+      wavesurfer.current.load(`/api/audio/${audioId}`);
 
       wavesurfer.current.on('ready', () => {
         // Calculate zoom to fit entire audio in the container
@@ -67,18 +70,62 @@ export default function Waveform({
         wavesurfer.current?.zoom(minPxPerSec);
         
         setLoaded(true);
-        onReady?.();
+        
+        // Pass duration to parent component when ready
+        onReady?.(duration);
       });
 
       wavesurfer.current.on('play', () => onPlaybackChange?.(true));
       wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
       wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
+      
+      // Add class for event handling with custom seek events
+      waveformRef.current.classList.add('waveform-container');
+      
+      // Listen for seek events from parent component
+      const handleSeek = (e: CustomEvent) => {
+        if (wavesurfer.current && e.detail?.position !== undefined) {
+          wavesurfer.current.seekTo(e.detail.position);
+        }
+      };
+      
+      waveformRef.current.addEventListener('seek', handleSeek as EventListener);
+      
+      return () => {
+        waveformRef.current?.removeEventListener('seek', handleSeek as EventListener);
+        wavesurfer.current?.destroy();
+      };
     }
-
+    
     return () => {
       wavesurfer.current?.destroy();
     };
-  }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
+  }, [audioId, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
+
+  // Synchronize with playback state
+  useEffect(() => {
+    if (wavesurfer.current) {
+      if (playing && !wavesurfer.current.isPlaying()) {
+        wavesurfer.current.play();
+      } else if (!playing && wavesurfer.current.isPlaying()) {
+        wavesurfer.current.pause();
+      }
+    }
+  }, [playing]);
+  
+  // Sync with currentTime (if provided by parent)
+  useEffect(() => {
+    if (wavesurfer.current && loaded && currentTime !== undefined) {
+      // Only seek if not playing to avoid conflicts
+      if (!playing) {
+        const duration = wavesurfer.current.getDuration();
+        if (duration > 0) {
+          const position = currentTime / duration;
+          wavesurfer.current.seekTo(position);
+        }
+      }
+    }
+  }, [currentTime, loaded, playing]);
 
   // Adjust zoom when window is resized to maintain the entire track being visible
   useEffect(() => {
@@ -94,16 +141,6 @@ export default function Waveform({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [loaded]);
-
-  useEffect(() => {
-    if (wavesurfer.current) {
-      if (playing && !wavesurfer.current.isPlaying()) {
-        wavesurfer.current.play();
-      } else if (!playing && wavesurfer.current.isPlaying()) {
-        wavesurfer.current.pause();
-      }
-    }
-  }, [playing]);
 
   return (
     <div className="relative w-full">
