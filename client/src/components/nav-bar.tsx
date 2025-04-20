@@ -1,6 +1,12 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { LogIn } from "lucide-react";
+import { LogIn, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function NavBar() {
   return (
@@ -8,7 +14,7 @@ export default function NavBar() {
       <div className="container flex h-14 max-w-screen-2xl items-center">
         <Link href="/">
           <a className="mr-8 flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-full bg-[#2B4D66] flex items-center justify-center">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">mm</span>
             </div>
             <span className="font-bold text-lg">MusicMashup</span>
@@ -17,9 +23,32 @@ export default function NavBar() {
 
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <nav className="flex items-center space-x-8">
-            <Link href="/products">
-              <a className="text-sm font-medium transition-colors hover:text-primary">Products</a>
-            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center text-sm font-medium transition-colors hover:text-primary">
+                  Products
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <Link href="/products/mashup">
+                  <DropdownMenuItem className="cursor-pointer">
+                    Audio Mashup Creator
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/products/bpm">
+                  <DropdownMenuItem className="cursor-pointer">
+                    BPM Detection
+                  </DropdownMenuItem>
+                </Link>
+                <Link href="/products/vocal-remover">
+                  <DropdownMenuItem className="cursor-pointer">
+                    Vocal Remover
+                  </DropdownMenuItem>
+                </Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Link href="/pricing">
               <a className="text-sm font-medium transition-colors hover:text-primary">Pricing</a>
             </Link>

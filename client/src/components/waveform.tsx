@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { type AudioFile } from "@shared/schema";
 
@@ -25,6 +25,7 @@ export default function Waveform({
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (waveformRef.current) {
@@ -35,30 +36,37 @@ export default function Waveform({
         cursorColor: progressColor,
         height,
         normalize: true,
-        minPxPerSec: 10, 
+        minPxPerSec: 1, // Allow very compressed view 
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
-        fillParent: true, 
-        autoScroll: true,
-        autoCenter: false, 
+        fillParent: true, // This ensures the waveform stretches to fit the container
+        autoScroll: false, // Disable auto-scrolling
+        autoCenter: false,
         interact: !hideControls,
         peaks: false,
         forceDecode: true,
         splitChannels: false,
         pixelRatio: 1,
-        responsive: true, 
-        partialRender: true, 
+        responsive: true,
+        partialRender: true,
       });
 
       wavesurfer.current.load(`/api/audio/${audioFile.id}`);
 
       wavesurfer.current.on('ready', () => {
+        // Calculate zoom to fit entire audio in the container
         const duration = wavesurfer.current?.getDuration() || 0;
         const containerWidth = waveformRef.current?.clientWidth || 0;
-        const zoom = containerWidth / duration;
-        wavesurfer.current?.zoom(zoom);
-
+        
+        // Ensure the entire track is visible by adjusting minPxPerSec
+        // We'll set minPxPerSec to a value that makes the waveform fit the container
+        const minPxPerSec = containerWidth / duration;
+        
+        // Apply optimal zoom level
+        wavesurfer.current?.zoom(minPxPerSec);
+        
+        setLoaded(true);
         onReady?.();
       });
 
@@ -71,6 +79,21 @@ export default function Waveform({
       wavesurfer.current?.destroy();
     };
   }, [audioFile, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
+
+  // Adjust zoom when window is resized to maintain the entire track being visible
+  useEffect(() => {
+    const handleResize = () => {
+      if (wavesurfer.current && loaded && waveformRef.current) {
+        const duration = wavesurfer.current.getDuration() || 0;
+        const containerWidth = waveformRef.current.clientWidth || 0;
+        const minPxPerSec = containerWidth / duration;
+        wavesurfer.current.zoom(minPxPerSec);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [loaded]);
 
   useEffect(() => {
     if (wavesurfer.current) {
