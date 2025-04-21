@@ -12,6 +12,7 @@ interface WaveformProps {
   height?: number;
   hideControls?: boolean;
   currentTime?: number;
+  timeOffset?: number; // To adjust track timing for alignment
 }
 
 export default function Waveform({ 
@@ -23,7 +24,8 @@ export default function Waveform({
   progressColor = 'hsl(250 95% 60%)',
   height = 64,
   hideControls = false,
-  currentTime
+  currentTime,
+  timeOffset = 0
 }: WaveformProps) {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
@@ -115,17 +117,20 @@ export default function Waveform({
   useEffect(() => {
     if (!wavesurfer.current || !loaded || currentTime === undefined) return;
     
+    // Apply time offset (positive moves track forward, negative moves it backward)
+    const adjustedTime = Math.max(0, currentTime - timeOffset);
+    
     // Prevent unnecessary updates and audio glitches
-    if (Math.abs((lastTimeRef.current || 0) - currentTime) < 0.05) return;
+    if (Math.abs((lastTimeRef.current || 0) - adjustedTime) < 0.05) return;
     
     try {
       const duration = wavesurfer.current.getDuration();
       if (duration > 0) {
         // Calculate position as percentage (0-1)
-        const position = currentTime / duration;
+        const position = adjustedTime / duration;
         
         // Only seek if it's a significant change to avoid stuttering
-        if (Math.abs(wavesurfer.current.getCurrentTime() - currentTime) > 0.1) {
+        if (Math.abs(wavesurfer.current.getCurrentTime() - adjustedTime) > 0.1) {
           // We need to pause before seeking to avoid audio glitches
           const wasPlaying = wavesurfer.current.isPlaying();
           if (wasPlaying) wavesurfer.current.pause();
@@ -139,11 +144,11 @@ export default function Waveform({
         }
       }
       
-      lastTimeRef.current = currentTime;
+      lastTimeRef.current = adjustedTime;
     } catch (err) {
       console.error("Error seeking wavesurfer:", err);
     }
-  }, [currentTime, loaded, playing]);
+  }, [currentTime, timeOffset, loaded, playing]);
 
   // Handle window resize for responsive waveform display
   useEffect(() => {

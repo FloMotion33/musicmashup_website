@@ -184,25 +184,22 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     });
   }, [duration]);
 
-  // Button handlers to modify volume
-  const increaseVolume = useCallback((stemKey: string) => {
-    setVolumes(prev => {
-      const current = prev[stemKey] || 1;
-      return {
-        ...prev,
-        [stemKey]: Math.min(1, current + 0.05) // Increase by 5%, max 100%
-      };
-    });
+  // State to track timing offsets for each stem (for track alignment)
+  const [timeOffsets, setTimeOffsets] = useState<Record<string, number>>({});
+  
+  // Button handlers to move tracks forward/backward by one bar
+  const moveTrackForward = useCallback((stemKey: string) => {
+    setTimeOffsets(prev => ({
+      ...prev,
+      [stemKey]: (prev[stemKey] || 0) + 0.25 // Move forward 1/4 of a second (approx one bar)
+    }));
   }, []);
 
-  const decreaseVolume = useCallback((stemKey: string) => {
-    setVolumes(prev => {
-      const current = prev[stemKey] || 1;
-      return {
-        ...prev,
-        [stemKey]: Math.max(0, current - 0.05) // Decrease by 5%, min 0%
-      };
-    });
+  const moveTrackBackward = useCallback((stemKey: string) => {
+    setTimeOffsets(prev => ({
+      ...prev,
+      [stemKey]: Math.max(0, (prev[stemKey] || 0) - 0.25) // Move backward, minimum 0
+    }));
   }, []);
 
   if (!hasTwoOrMoreStems) {
@@ -299,6 +296,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                         height={50}
                         hideControls
                         currentTime={currentTime}
+                        timeOffset={timeOffsets[`${file.id}-vocals`] || 0}
                       />
                     </div>
                     
@@ -325,16 +323,18 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => increaseVolume(`${file.id}-vocals`)}
+                            onClick={() => moveTrackForward(`${file.id}-vocals`)}
                             className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                            title="Shift track forward by one bar"
                           >
                             <ChevronRight className="h-3 w-3 text-zinc-400" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => decreaseVolume(`${file.id}-vocals`)}
+                            onClick={() => moveTrackBackward(`${file.id}-vocals`)}
                             className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                            title="Shift track backward by one bar"
                           >
                             <ChevronLeft className="h-3 w-3 text-zinc-400" />
                           </Button>
@@ -377,6 +377,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                         height={50}
                         hideControls
                         currentTime={currentTime}
+                        timeOffset={timeOffsets[`${file.id}-instrumental`] || 0}
                       />
                     </div>
                     
@@ -403,16 +404,18 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => increaseVolume(`${file.id}-instrumental`)}
+                            onClick={() => moveTrackForward(`${file.id}-instrumental`)}
                             className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                            title="Shift track forward by one bar"
                           >
                             <ChevronRight className="h-3 w-3 text-zinc-400" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => decreaseVolume(`${file.id}-instrumental`)}
+                            onClick={() => moveTrackBackward(`${file.id}-instrumental`)}
                             className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                            title="Shift track backward by one bar"
                           >
                             <ChevronLeft className="h-3 w-3 text-zinc-400" />
                           </Button>
