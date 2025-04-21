@@ -28,8 +28,8 @@ export default function AnimatedBackground({ isPlaying, intensity = 0.5 }: Anima
       if (deltaTime > 30) { // Limiting updates for performance
         lastUpdateRef.current = timestamp;
         
-        // Move through hue space
-        setHue(h => (h + 0.5) % 360);
+        // Move through hue space (subtle movement in the purple range)
+        setHue(h => 250 + Math.sin(timestamp / 3000) * 10); // Stay in purple range
         
         // Create a pulsing effect
         setPulse(p => {
@@ -53,36 +53,53 @@ export default function AnimatedBackground({ isPlaying, intensity = 0.5 }: Anima
     };
   }, [isPlaying, intensity]);
 
-  // Instead of fixed size gradients, we'll use relative sizes to fit rounded cards better
-  const gradientSize = 80 + (amplitude * 30); // Larger base size for better coverage
-
   return (
-    <div className="absolute inset-0 -z-10 overflow-hidden rounded-lg">
+    <div className="absolute inset-0 z-0">
       <div 
-        className="absolute inset-0 transition-all duration-500"
+        className="absolute inset-0 transition-opacity duration-500"
         style={{
-          opacity: isPlaying ? 0.65 : 0.15, // Reduced opacity to be less distracting
-          background: `
-            radial-gradient(circle at 30% 30%, 
-              hsl(${hue}, 95%, 50%, ${amplitude}) 0%, 
-              transparent ${gradientSize}%),
-            radial-gradient(circle at 70% 30%, 
-              hsl(${(hue + 60) % 360}, 95%, 50%, ${amplitude}) 0%, 
-              transparent ${gradientSize}%),
-            radial-gradient(circle at 70% 70%, 
-              hsl(${(hue + 120) % 360}, 95%, 50%, ${amplitude}) 0%, 
-              transparent ${gradientSize}%),
-            radial-gradient(circle at 30% 70%, 
-              hsl(${(hue + 180) % 360}, 95%, 50%, ${amplitude}) 0%, 
-              transparent ${gradientSize}%)
-          `,
-          transform: `scale(${isPlaying ? 1 + amplitude * 0.05 : 1})`,
-          filter: 'blur(30px)', // Added blur for a more diffuse effect
+          opacity: isPlaying ? 0.6 : 0.15,
+          background: `linear-gradient(to bottom, rgba(20, 20, 33, 0.8), rgba(0, 0, 0, 0.95)), 
+            radial-gradient(circle at 50% 0%, 
+              rgba(93, 95, 239, ${amplitude * 0.7}), 
+              transparent 70%),
+            radial-gradient(circle at 85% 30%, 
+              rgba(93, 95, 239, ${amplitude * 0.5}), 
+              transparent 60%),
+            radial-gradient(circle at 20% 80%, 
+              rgba(93, 95, 239, ${amplitude * 0.6}), 
+              transparent 55%)`,
         }}
       />
+      
+      {/* Dynamic wave patterns */}
       <div 
-        className="absolute inset-0 bg-black/40" 
-        style={{ backdropFilter: 'blur(5px)' }}
+        className="absolute inset-0 opacity-20"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(
+              45deg,
+              transparent,
+              transparent 10px,
+              rgba(93, 95, 239, ${amplitude * 0.1}) 10px,
+              rgba(93, 95, 239, ${amplitude * 0.1}) 11px
+            )
+          `,
+          transform: `scale(${isPlaying ? 1 + amplitude * 0.03 : 1})`,
+          transition: 'transform 0.5s ease-out'
+        }}
+      />
+      
+      {/* Pulsing glow effect at center */}
+      <div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+        style={{
+          backgroundColor: `hsl(${hue}, 80%, 50%)`,
+          width: `${200 + amplitude * 100}px`,
+          height: `${200 + amplitude * 100}px`,
+          opacity: isPlaying ? 0.15 : 0.05,
+          transition: 'opacity 0.5s ease-out'
+        }}
       />
     </div>
   );

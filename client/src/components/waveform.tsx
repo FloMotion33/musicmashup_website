@@ -6,12 +6,12 @@ interface WaveformProps {
   audioFile: AudioFile;
   onPlaybackChange?: (isPlaying: boolean) => void;
   playing?: boolean;
-  onReady?: (duration: number) => void; // Updated to pass duration when ready
+  onReady?: (duration: number) => void;
   waveColor?: string;
   progressColor?: string;
   height?: number;
   hideControls?: boolean;
-  currentTime?: number; // Add currentTime prop for synchronized playback
+  currentTime?: number;
 }
 
 export default function Waveform({ 
@@ -28,61 +28,55 @@ export default function Waveform({
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const audioId = audioFile.id; // Get id for API call
+  const audioId = audioFile.id;
+  const lastTimeRef = useRef<number>(0);
   
   // Setup waveform
   useEffect(() => {
     if (waveformRef.current) {
-      // Create wavesurfer instance with proper type-safe options
+      // Create wavesurfer instance
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor,
         progressColor,
-        cursorColor: 'transparent', // Hide default cursor
+        cursorColor: 'transparent', // Hide default cursor since we use a shared vertical line
         height,
         normalize: true,
-        minPxPerSec: 1, // Allow very compressed view 
+        minPxPerSec: 1,
         barWidth: 2,
         barGap: 1,
-        barRadius: 2,
-        fillParent: true, // This ensures the waveform stretches to fit the container
-        autoScroll: false, // Disable auto-scrolling
-        autoCenter: false,
+        barRadius: 1,
+        fillParent: true,
         interact: !hideControls,
+        autoScroll: false,
+        autoCenter: false,
         forceDecode: true,
         pixelRatio: 1,
         responsive: true,
-        partialRender: true,
-      } as any); // Type casting to any to avoid type errors
+      } as any);
 
       wavesurfer.current.load(`/api/audio/${audioId}`);
 
       wavesurfer.current.on('ready', () => {
-        // Calculate zoom to fit entire audio in the container
         const duration = wavesurfer.current?.getDuration() || 0;
         const containerWidth = waveformRef.current?.clientWidth || 0;
         
-        // Ensure the entire track is visible by adjusting minPxPerSec
-        // We'll set minPxPerSec to a value that makes the waveform fit the container
+        // Calculate zoom level to fit the entire track
         const minPxPerSec = containerWidth / duration;
-        
-        // Apply optimal zoom level
         wavesurfer.current?.zoom(minPxPerSec);
         
         setLoaded(true);
-        
-        // Pass duration to parent component when ready
         onReady?.(duration);
       });
 
+      // Handle playback events
       wavesurfer.current.on('play', () => onPlaybackChange?.(true));
       wavesurfer.current.on('pause', () => onPlaybackChange?.(false));
       wavesurfer.current.on('finish', () => onPlaybackChange?.(false));
       
-      // Add class for event handling with custom seek events
+      // Handle seeking from parent component
       waveformRef.current.classList.add('waveform-container');
       
-      // Listen for seek events from parent component
       const handleSeek = (e: CustomEvent) => {
         if (wavesurfer.current && e.detail?.position !== undefined) {
           wavesurfer.current.seekTo(e.detail.position);
@@ -102,39 +96,70 @@ export default function Waveform({
     };
   }, [audioId, onPlaybackChange, onReady, waveColor, progressColor, height, hideControls]);
 
-  // Synchronize with playback state
+  // Handle play/pause state
   useEffect(() => {
-    if (wavesurfer.current) {
+    if (!wavesurfer.current || !loaded) return;
+    
+    try {
       if (playing && !wavesurfer.current.isPlaying()) {
         wavesurfer.current.play();
       } else if (!playing && wavesurfer.current.isPlaying()) {
         wavesurfer.current.pause();
       }
+    } catch (err) {
+      console.error("Error controlling wavesurfer playback:", err);
     }
-  }, [playing]);
+  }, [playing, loaded]);
   
-  // Sync with currentTime (if provided by parent)
+  // Handle time synchronization with parent
   useEffect(() => {
-    if (wavesurfer.current && loaded && currentTime !== undefined) {
-      // Only seek if not playing to avoid conflicts
-      if (!playing) {
-        const duration = wavesurfer.current.getDuration();
-        if (duration > 0) {
-          const position = currentTime / duration;
+    if (!wavesurfer.current || !loaded || currentTime === undefined) return;
+    
+    // Prevent unnecessary updates and audio glitches
+    if (Math.abs((lastTimeRef.current || 0) - currentTime) < 0.05) return;
+    
+    try {
+      const duration = wavesurfer.current.getDuration();
+      if (duration > 0) {
+        // Calculate position as percentage (0-1)
+        const position = currentTime / duration;
+        
+        // Only seek if it's a significant change to avoid stuttering
+        if (Math.abs(wavesurfer.current.getCurrentTime() - currentTime) > 0.1) {
+          // We need to pause before seeking to avoid audio glitches
+          const wasPlaying = wavesurfer.current.isPlaying();
+          if (wasPlaying) wavesurfer.current.pause();
+          
           wavesurfer.current.seekTo(position);
+          
+          // Resume playback if it was playing
+          if (wasPlaying && playing) {
+            setTimeout(() => wavesurfer.current?.play(), 10);
+          }
         }
       }
+      
+      lastTimeRef.current = currentTime;
+    } catch (err) {
+      console.error("Error seeking wavesurfer:", err);
     }
   }, [currentTime, loaded, playing]);
 
-  // Adjust zoom when window is resized to maintain the entire track being visible
+  // Handle window resize for responsive waveform display
   useEffect(() => {
     const handleResize = () => {
-      if (wavesurfer.current && loaded && waveformRef.current) {
+      if (!wavesurfer.current || !loaded || !waveformRef.current) return;
+      
+      try {
         const duration = wavesurfer.current.getDuration() || 0;
         const containerWidth = waveformRef.current.clientWidth || 0;
-        const minPxPerSec = containerWidth / duration;
-        wavesurfer.current.zoom(minPxPerSec);
+        
+        if (duration > 0 && containerWidth > 0) {
+          const minPxPerSec = containerWidth / duration;
+          wavesurfer.current.zoom(minPxPerSec);
+        }
+      } catch (err) {
+        console.error("Error resizing wavesurfer:", err);
       }
     };
 

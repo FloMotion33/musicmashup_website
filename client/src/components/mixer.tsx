@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { type AudioFile } from "@shared/schema";
-import { Play, Pause, Save, Loader2, Volume2, VolumeX, Music, Mic } from "lucide-react";
+import { Play, Pause, Save, Loader2, Volume2, VolumeX, Music, Mic, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import Waveform from "./waveform";
@@ -24,9 +23,10 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   const [duration, setDuration] = useState(0);
   const [muteStates, setMuteStates] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
-  const progressBarRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
+  const waveformsRef = useRef<HTMLDivElement>(null);
 
   // Count total stems that need to be loaded
   const totalStems = audioFiles.reduce((count, file) => {
@@ -51,14 +51,12 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     audioFiles.forEach(file => {
       if (stemSettings[file.id]?.extractVocals) {
         const stemKey = `${file.id}-vocals`;
-        // Always start at 100% volume (value of 1)
-        initialVolumes[stemKey] = 1;
+        initialVolumes[stemKey] = 1; // 100% volume
         initialMuteStates[stemKey] = false;
       }
       if (stemSettings[file.id]?.extractInstrumental) {
         const stemKey = `${file.id}-instrumental`;
-        // Always start at 100% volume (value of 1)
-        initialVolumes[stemKey] = 1;
+        initialVolumes[stemKey] = 0.64; // 64% volume for instrumental as shown in mockup
         initialMuteStates[stemKey] = false;
       }
     });
@@ -68,15 +66,14 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     setIsPlaying(false);
     setReadyCount(0);
     setCurrentTime(0);
-    // Initialize to a short duration, will be updated with actual file durations
-    setDuration(0.1);
+    setDuration(0.1); // Will be updated with actual durations
   }, [audioFiles, stemSettings]);
 
+  // Synchronize playback across all waveforms
   useEffect(() => {
     if (isPlaying) {
       timerRef.current = window.setInterval(() => {
         setCurrentTime(prev => {
-          // Stop at duration
           if (prev >= duration) {
             clearInterval(timerRef.current!);
             setIsPlaying(false);
@@ -168,23 +165,45 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     }));
   }, []);
 
-  // Handle click on progress bar to seek
-  const handleProgressBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || !duration) return;
+  // Handle click anywhere in the waveform area to seek
+  const handleWaveformClick = useCallback((e: React.MouseEvent) => {
+    if (!waveformsRef.current || !duration) return;
     
-    const rect = progressBarRef.current.getBoundingClientRect();
+    const rect = waveformsRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const percentX = clickX / rect.width;
     const newTime = percentX * duration;
     
+    // Set the current time
     setCurrentTime(newTime);
     
-    // Update all waveforms to this position
+    // Notify all waveforms to seek to this position
     document.querySelectorAll('.waveform-container').forEach(el => {
       const event = new CustomEvent('seek', { detail: { position: percentX } });
       el.dispatchEvent(event);
     });
   }, [duration]);
+
+  // Button handlers to modify volume
+  const increaseVolume = useCallback((stemKey: string) => {
+    setVolumes(prev => {
+      const current = prev[stemKey] || 1;
+      return {
+        ...prev,
+        [stemKey]: Math.min(1, current + 0.05) // Increase by 5%, max 100%
+      };
+    });
+  }, []);
+
+  const decreaseVolume = useCallback((stemKey: string) => {
+    setVolumes(prev => {
+      const current = prev[stemKey] || 1;
+      return {
+        ...prev,
+        [stemKey]: Math.max(0, current - 0.05) // Decrease by 5%, min 0%
+      };
+    });
+  }, []);
 
   if (!hasTwoOrMoreStems) {
     return (
@@ -195,188 +214,237 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   }
 
   return (
-    <div className="space-y-6 relative rounded-lg overflow-hidden">
+    <div 
+      className="relative rounded-xl overflow-hidden bg-black"
+      ref={containerRef}
+    >
+      {/* Full-width background animation */}
       <AnimatedBackground isPlaying={isPlaying} intensity={0.7} />
       
-      {/* Play button and time display */}
-      <div className="flex items-center justify-start gap-4 pb-2">
-        <Button
-          size="lg"
-          variant="ghost"
-          onClick={togglePlayback}
-          disabled={readyCount !== totalStems}
-          className="text-primary h-16 w-16 rounded-full"
+      <div className="p-3 space-y-4 relative z-10">
+        {/* Play button and time display */}
+        <div className="flex items-center">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={togglePlayback}
+            disabled={readyCount !== totalStems}
+            className="flex h-12 w-12 rounded-lg bg-indigo-700/90 hover:bg-indigo-600 text-white border-none mr-2"
+          >
+            {readyCount !== totalStems ? (
+              <Loader2 className="h-6 w-6 animate-spin text-white" />
+            ) : isPlaying ? (
+              <Pause className="h-6 w-6" />
+            ) : (
+              <Play className="h-6 w-6 ml-0.5" />
+            )}
+          </Button>
+          
+          <div className="font-mono text-xl font-bold text-white">
+            {formatTime(currentTime)}
+            <span className="text-zinc-400 text-sm ml-1">/ {formatTime(duration)}</span>
+          </div>
+        </div>
+        
+        {/* Track waveforms with single vertical playhead */}
+        <div 
+          className="relative cursor-pointer" 
+          ref={waveformsRef}
+          onClick={handleWaveformClick}
         >
-          {readyCount !== totalStems ? (
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          ) : isPlaying ? (
-            <Pause className="h-8 w-8 text-primary" />
+          {/* Vertical playhead overlay (shared across all tracks) */}
+          <div 
+            className="absolute top-0 bottom-0 w-0.5 bg-indigo-500 z-30 pointer-events-none" 
+            style={{ 
+              left: `${(currentTime / duration) * 100}%`,
+              height: '100%' 
+            }}
+            ref={playheadRef}
+          />
+          
+          {/* Tracks */}
+          <div className="space-y-3">
+            {audioFiles.map((file) => (
+              <div key={file.id}>
+                {stemSettings[file.id]?.extractVocals && (
+                  <div className="bg-zinc-900/80 rounded-lg p-3 mb-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Mic className="h-4 w-4 text-zinc-400" />
+                        <span className="text-zinc-300 text-sm truncate max-w-[80px]">Vocal</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleMute(`${file.id}-vocals`)}
+                        className="h-7 w-7 p-0 rounded-md text-zinc-400 hover:text-white"
+                      >
+                        {muteStates[`${file.id}-vocals`] ? 
+                          <VolumeX className="h-4 w-4" /> : 
+                          <Volume2 className="h-4 w-4" />
+                        }
+                      </Button>
+                    </div>
+                    
+                    <div 
+                      className="relative" 
+                      style={{ opacity: muteStates[`${file.id}-vocals`] ? 0.5 : 1 }}
+                    >
+                      <Waveform 
+                        audioFile={file}
+                        playing={isPlaying && !muteStates[`${file.id}-vocals`]}
+                        onReady={handleWaveformReady}
+                        waveColor="#5D5FEF"
+                        progressColor="transparent" 
+                        height={50}
+                        hideControls
+                        currentTime={currentTime}
+                      />
+                    </div>
+                    
+                    {/* Volume controls as in the mockup */}
+                    <div className="flex items-center justify-end mt-1">
+                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleMute(`${file.id}-vocals`)}
+                          className="p-0 h-8 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                        >
+                          {muteStates[`${file.id}-vocals`] ? 
+                            <VolumeX className="h-4 w-4 text-zinc-400" /> : 
+                            <Volume2 className="h-4 w-4 text-zinc-400" />
+                          }
+                        </Button>
+                        
+                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 min-w-16 font-mono text-white font-bold">
+                          {Math.round(volumes[`${file.id}-vocals`] * 100)}
+                        </div>
+                        
+                        <div className="flex flex-col">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => increaseVolume(`${file.id}-vocals`)}
+                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                          >
+                            <ChevronRight className="h-3 w-3 text-zinc-400" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => decreaseVolume(`${file.id}-vocals`)}
+                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                          >
+                            <ChevronLeft className="h-3 w-3 text-zinc-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {stemSettings[file.id]?.extractInstrumental && (
+                  <div className="bg-zinc-900/80 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Music className="h-4 w-4 text-zinc-400" />
+                        <span className="text-zinc-300 text-sm truncate max-w-[80px]">Instrumental</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleMute(`${file.id}-instrumental`)}
+                        className="h-7 w-7 p-0 rounded-md text-zinc-400 hover:text-white"
+                      >
+                        {muteStates[`${file.id}-instrumental`] ? 
+                          <VolumeX className="h-4 w-4" /> : 
+                          <Volume2 className="h-4 w-4" />
+                        }
+                      </Button>
+                    </div>
+                    
+                    <div 
+                      className="relative" 
+                      style={{ opacity: muteStates[`${file.id}-instrumental`] ? 0.5 : 1 }}
+                    >
+                      <Waveform 
+                        audioFile={file}
+                        playing={isPlaying && !muteStates[`${file.id}-instrumental`]}
+                        onReady={handleWaveformReady}
+                        waveColor="#5D5FEF"
+                        progressColor="transparent"
+                        height={50}
+                        hideControls
+                        currentTime={currentTime}
+                      />
+                    </div>
+                    
+                    {/* Volume controls */}
+                    <div className="flex items-center justify-end mt-1">
+                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleMute(`${file.id}-instrumental`)}
+                          className="p-0 h-8 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                        >
+                          {muteStates[`${file.id}-instrumental`] ? 
+                            <VolumeX className="h-4 w-4 text-zinc-400" /> : 
+                            <Volume2 className="h-4 w-4 text-zinc-400" />
+                          }
+                        </Button>
+                        
+                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 min-w-16 font-mono text-white font-bold">
+                          {Math.round(volumes[`${file.id}-instrumental`] * 100)}
+                        </div>
+                        
+                        <div className="flex flex-col">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => increaseVolume(`${file.id}-instrumental`)}
+                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                          >
+                            <ChevronRight className="h-3 w-3 text-zinc-400" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => decreaseVolume(`${file.id}-instrumental`)}
+                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                          >
+                            <ChevronLeft className="h-3 w-3 text-zinc-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Save button */}
+        <Button 
+          className="w-full bg-indigo-600 hover:bg-indigo-700 py-4 mt-3 rounded-lg"
+          onClick={() => mixMutation.mutate()}
+          disabled={mixMutation.isPending}
+        >
+          {mixMutation.isPending ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </div>
           ) : (
-            <Play className="h-8 w-8 text-primary pl-1" />
+            <>
+              <Save className="mr-2 h-4 w-4" />
+              Save Mashup
+            </>
           )}
         </Button>
-        
-        <div className="text-3xl font-bold tracking-widest text-primary">
-          {formatTime(currentTime)} <span className="text-muted-foreground text-lg">/ {formatTime(duration)}</span>
-        </div>
       </div>
-      
-      {/* Tracks */}
-      <div className="space-y-4">
-        {audioFiles.map((file) => (
-          <div key={file.id}>
-            {stemSettings[file.id]?.extractVocals && (
-              <div className="bg-zinc-900/80 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Mic className="h-5 w-5 text-zinc-400" />
-                    <span className="text-zinc-300 font-medium truncate max-w-[150px]">Vocal</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleMute(`${file.id}-vocals`)}
-                      className="h-8 w-8 p-0 text-zinc-400 hover:text-white"
-                    >
-                      {muteStates[`${file.id}-vocals`] ? 
-                        <VolumeX className="h-5 w-5" /> : 
-                        <Volume2 className="h-5 w-5" />
-                      }
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="relative" style={{ opacity: muteStates[`${file.id}-vocals`] ? 0.5 : 1 }}>
-                  <div 
-                    className="absolute left-0 top-0 bottom-0 w-0.5 bg-indigo-500 z-10" 
-                    style={{ 
-                      left: `${(currentTime / duration) * 100}%`,
-                      height: '100%' 
-                    }}
-                    ref={playheadRef}
-                  />
-                  <Waveform 
-                    audioFile={file}
-                    playing={isPlaying && !muteStates[`${file.id}-vocals`]}
-                    onReady={handleWaveformReady}
-                    waveColor="#6366f1"
-                    progressColor="#818cf8"
-                    height={60}
-                    hideControls
-                    currentTime={currentTime}
-                  />
-                </div>
-                
-                <div className="mt-2 flex items-center justify-end gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-indigo-400 font-bold text-lg bg-indigo-950/50 py-1 px-3 rounded-md">
-                      {Math.round(volumes[`${file.id}-vocals`] * 100) || 100}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[volumes[`${file.id}-vocals`] * 100 || 100]}
-                    onValueChange={(value) => updateVolume(`${file.id}-vocals`, value[0] / 100)}
-                    max={100}
-                    step={1}
-                    className="w-[150px]"
-                  />
-                </div>
-              </div>
-            )}
-            
-            {stemSettings[file.id]?.extractInstrumental && (
-              <div className="bg-zinc-900/80 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Music className="h-5 w-5 text-zinc-400" />
-                    <span className="text-zinc-300 font-medium truncate max-w-[150px]">Instrumental</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleMute(`${file.id}-instrumental`)}
-                      className="h-8 w-8 p-0 text-zinc-400 hover:text-white"
-                    >
-                      {muteStates[`${file.id}-instrumental`] ? 
-                        <VolumeX className="h-5 w-5" /> : 
-                        <Volume2 className="h-5 w-5" />
-                      }
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="relative" style={{ opacity: muteStates[`${file.id}-instrumental`] ? 0.5 : 1 }}>
-                  <div 
-                    className="absolute left-0 top-0 bottom-0 w-0.5 bg-indigo-500 z-10" 
-                    style={{ 
-                      left: `${(currentTime / duration) * 100}%`,
-                      height: '100%' 
-                    }}
-                  />
-                  <Waveform 
-                    audioFile={file}
-                    playing={isPlaying && !muteStates[`${file.id}-instrumental`]}
-                    onReady={handleWaveformReady}
-                    waveColor="#6366f1"
-                    progressColor="#818cf8"
-                    height={60}
-                    hideControls
-                    currentTime={currentTime}
-                  />
-                </div>
-                
-                <div className="mt-2 flex items-center justify-end gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-indigo-400 font-bold text-lg bg-indigo-950/50 py-1 px-3 rounded-md">
-                      {Math.round(volumes[`${file.id}-instrumental`] * 100) || 100}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[volumes[`${file.id}-instrumental`] * 100 || 100]}
-                    onValueChange={(value) => updateVolume(`${file.id}-instrumental`, value[0] / 100)}
-                    max={100}
-                    step={1}
-                    className="w-[150px]"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      
-      {/* Clickable progress bar */}
-      <div 
-        className="relative h-1 bg-zinc-800 rounded-full overflow-hidden mt-2 cursor-pointer"
-        ref={progressBarRef}
-        onClick={handleProgressBarClick}
-      >
-        <div
-          className="absolute h-full bg-indigo-500 transition-all"
-          style={{ width: `${(currentTime / duration) * 100}%` }}
-        />
-      </div>
-      
-      {/* Save button */}
-      <Button 
-        className="w-full bg-indigo-600 hover:bg-indigo-700 py-6 text-lg mt-4"
-        onClick={() => mixMutation.mutate()}
-        disabled={mixMutation.isPending}
-      >
-        {mixMutation.isPending ? (
-          <div className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Saving...
-          </div>
-        ) : (
-          <>
-            <Save className="mr-2 h-5 w-5" />
-            Save Mashup
-          </>
-        )}
-      </Button>
     </div>
   );
 }
