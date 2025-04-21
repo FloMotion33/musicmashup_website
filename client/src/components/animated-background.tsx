@@ -53,30 +53,37 @@ export default function AnimatedBackground({ isPlaying, intensity = 0.5 }: Anima
     };
   }, [isPlaying, intensity]);
 
-  // Calculate gradient positions that move with the beat
-  const gradientSize = 50 + (amplitude * 20);
+  // Instead of fixed size gradients, we'll use relative sizes to fit rounded cards better
+  const gradientSize = 80 + (amplitude * 30); // Larger base size for better coverage
 
   return (
-    <div 
-      className="fixed inset-0 -z-10 transition-all duration-500"
-      style={{
-        opacity: isPlaying ? 0.9 : 0.2,
-        background: `
-          radial-gradient(circle at 0% 0%, 
-            hsl(${hue}, 95%, 90%, ${amplitude}) 0%, 
-            transparent ${gradientSize}%),
-          radial-gradient(circle at 100% 0%, 
-            hsl(${(hue + 60) % 360}, 95%, 90%, ${amplitude}) 0%, 
-            transparent ${gradientSize}%),
-          radial-gradient(circle at 100% 100%, 
-            hsl(${(hue + 120) % 360}, 95%, 90%, ${amplitude}) 0%, 
-            transparent ${gradientSize}%),
-          radial-gradient(circle at 0% 100%, 
-            hsl(${(hue + 180) % 360}, 95%, 90%, ${amplitude}) 0%, 
-            transparent ${gradientSize}%)
-        `,
-        transform: `scale(${isPlaying ? 1 + amplitude * 0.05 : 1})`,
-      }}
-    />
+    <div className="absolute inset-0 -z-10 overflow-hidden rounded-lg">
+      <div 
+        className="absolute inset-0 transition-all duration-500"
+        style={{
+          opacity: isPlaying ? 0.65 : 0.15, // Reduced opacity to be less distracting
+          background: `
+            radial-gradient(circle at 30% 30%, 
+              hsl(${hue}, 95%, 50%, ${amplitude}) 0%, 
+              transparent ${gradientSize}%),
+            radial-gradient(circle at 70% 30%, 
+              hsl(${(hue + 60) % 360}, 95%, 50%, ${amplitude}) 0%, 
+              transparent ${gradientSize}%),
+            radial-gradient(circle at 70% 70%, 
+              hsl(${(hue + 120) % 360}, 95%, 50%, ${amplitude}) 0%, 
+              transparent ${gradientSize}%),
+            radial-gradient(circle at 30% 70%, 
+              hsl(${(hue + 180) % 360}, 95%, 50%, ${amplitude}) 0%, 
+              transparent ${gradientSize}%)
+          `,
+          transform: `scale(${isPlaying ? 1 + amplitude * 0.05 : 1})`,
+          filter: 'blur(30px)', // Added blur for a more diffuse effect
+        }}
+      />
+      <div 
+        className="absolute inset-0 bg-black/40" 
+        style={{ backdropFilter: 'blur(5px)' }}
+      />
+    </div>
   );
 }

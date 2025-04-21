@@ -51,12 +51,14 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     audioFiles.forEach(file => {
       if (stemSettings[file.id]?.extractVocals) {
         const stemKey = `${file.id}-vocals`;
-        initialVolumes[stemKey] = volumes[stemKey] ?? 1;
+        // Always start at 100% volume (value of 1)
+        initialVolumes[stemKey] = 1;
         initialMuteStates[stemKey] = false;
       }
       if (stemSettings[file.id]?.extractInstrumental) {
         const stemKey = `${file.id}-instrumental`;
-        initialVolumes[stemKey] = volumes[stemKey] ?? 0.64; // Default instrumental a bit lower
+        // Always start at 100% volume (value of 1)
+        initialVolumes[stemKey] = 1;
         initialMuteStates[stemKey] = false;
       }
     });
@@ -66,7 +68,8 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
     setIsPlaying(false);
     setReadyCount(0);
     setCurrentTime(0);
-    setDuration(5 * 60); // Default 5 minute duration until we get real duration
+    // Initialize to a short duration, will be updated with actual file durations
+    setDuration(0.1);
   }, [audioFiles, stemSettings]);
 
   useEffect(() => {
@@ -192,7 +195,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative rounded-lg overflow-hidden">
       <AnimatedBackground isPlaying={isPlaying} intensity={0.7} />
       
       {/* Play button and time display */}
@@ -327,11 +330,11 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                 <div className="mt-2 flex items-center justify-end gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-indigo-400 font-bold text-lg bg-indigo-950/50 py-1 px-3 rounded-md">
-                      {Math.round(volumes[`${file.id}-instrumental`] * 100) || 64}
+                      {Math.round(volumes[`${file.id}-instrumental`] * 100) || 100}
                     </span>
                   </div>
                   <Slider
-                    value={[volumes[`${file.id}-instrumental`] * 100 || 64]}
+                    value={[volumes[`${file.id}-instrumental`] * 100 || 100]}
                     onValueChange={(value) => updateVolume(`${file.id}-instrumental`, value[0] / 100)}
                     max={100}
                     step={1}
