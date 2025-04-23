@@ -300,9 +300,10 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                       />
                     </div>
                     
-                    {/* Volume controls as in the mockup */}
-                    <div className="flex items-center justify-end mt-1">
-                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch">
+                    {/* Volume controls and alignment buttons in vertical layout */}
+                    <div className="flex flex-col items-end mt-1 gap-1">
+                      {/* Volume controls */}
+                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -315,28 +316,34 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           }
                         </Button>
                         
-                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 min-w-16 font-mono text-white font-bold">
+                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 font-mono text-white font-bold">
                           {Math.round(volumes[`${file.id}-vocals`] * 100)}
                         </div>
-                        
-                        <div className="flex flex-col">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => moveTrackForward(`${file.id}-vocals`)}
-                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
-                            title="Shift track forward by one bar"
-                          >
-                            <ChevronRight className="h-3 w-3 text-zinc-400" />
-                          </Button>
+                      </div>
+                      
+                      {/* Track alignment controls in separate row */}
+                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
+                        <div className="flex-grow flex items-center justify-between px-2 h-8">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => moveTrackBackward(`${file.id}-vocals`)}
-                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
                             title="Shift track backward by one bar"
                           >
-                            <ChevronLeft className="h-3 w-3 text-zinc-400" />
+                            <ChevronLeft className="h-4 w-4 text-zinc-300" />
+                          </Button>
+                          
+                          <span className="text-xs text-zinc-400">Align Track</span>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => moveTrackForward(`${file.id}-vocals`)}
+                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
+                            title="Shift track forward by one bar"
+                          >
+                            <ChevronRight className="h-4 w-4 text-zinc-300" />
                           </Button>
                         </div>
                       </div>
@@ -381,9 +388,10 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                       />
                     </div>
                     
-                    {/* Volume controls */}
-                    <div className="flex items-center justify-end mt-1">
-                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch">
+                    {/* Volume controls and alignment buttons in vertical layout */}
+                    <div className="flex flex-col items-end mt-1 gap-1">
+                      {/* Volume controls */}
+                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -396,28 +404,34 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           }
                         </Button>
                         
-                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 min-w-16 font-mono text-white font-bold">
+                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 font-mono text-white font-bold">
                           {Math.round(volumes[`${file.id}-instrumental`] * 100)}
                         </div>
-                        
-                        <div className="flex flex-col">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => moveTrackForward(`${file.id}-instrumental`)}
-                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
-                            title="Shift track forward by one bar"
-                          >
-                            <ChevronRight className="h-3 w-3 text-zinc-400" />
-                          </Button>
+                      </div>
+                      
+                      {/* Track alignment controls in separate row */}
+                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
+                        <div className="flex-grow flex items-center justify-between px-2 h-8">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => moveTrackBackward(`${file.id}-instrumental`)}
-                            className="p-0 h-4 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
                             title="Shift track backward by one bar"
                           >
-                            <ChevronLeft className="h-3 w-3 text-zinc-400" />
+                            <ChevronLeft className="h-4 w-4 text-zinc-300" />
+                          </Button>
+                          
+                          <span className="text-xs text-zinc-400">Align Track</span>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => moveTrackForward(`${file.id}-instrumental`)}
+                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
+                            title="Shift track forward by one bar"
+                          >
+                            <ChevronRight className="h-4 w-4 text-zinc-300" />
                           </Button>
                         </div>
                       </div>
