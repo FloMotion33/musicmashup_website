@@ -36,24 +36,30 @@ export default function Waveform({
   // Setup waveform
   useEffect(() => {
     if (waveformRef.current) {
-      // Create wavesurfer instance
+      // Create wavesurfer instance with enhanced visualization
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor,
         progressColor,
         cursorColor: 'transparent', // Hide default cursor since we use a shared vertical line
         height,
-        normalize: true,
+        // Always normalize to make even quiet tracks visible
+        normalize: true, 
         minPxPerSec: 1,
+        // Enhanced visualization settings
         barWidth: 2,
         barGap: 1,
-        barRadius: 1,
+        barRadius: 2, 
+        barHeight: 5, // Higher bars for better contrast across various audio intensities
         fillParent: true,
         interact: !hideControls,
         autoScroll: false,
         autoCenter: false,
+        // Enhanced decoding for better waveform representation
         forceDecode: true,
-        pixelRatio: 1,
+        // Set splitChannels to false to get a combined waveform
+        splitChannels: false,
+        pixelRatio: 1.5, // Higher pixel ratio for better quality
         responsive: true,
       } as any);
 
@@ -66,6 +72,32 @@ export default function Waveform({
         // Calculate zoom level to fit the entire track
         const minPxPerSec = containerWidth / duration;
         wavesurfer.current?.zoom(minPxPerSec);
+        
+        // Enhanced visualization after loading
+        // We use a simpler approach that works reliably with all WaveSurfer versions
+        try {
+          // Apply contrast settings to make the waveform more visible
+          if (wavesurfer.current) {
+            // Force a redraw with optimized settings for better visualization
+            const barHeight = 5;
+            const barWidth = 2;
+            const barGap = 1;
+            const barRadius = 2;
+            
+            // Apply these settings for maximum clarity
+            // This uses the as any cast to avoid TypeScript errors with WaveSurfer options
+            wavesurfer.current.setOptions({
+              barHeight,
+              barWidth,
+              barGap,
+              barRadius,
+              // Increase contrast
+              normalize: true,
+            } as any);
+          }
+        } catch (err) {
+          console.log("Could not apply custom waveform settings", err);
+        }
         
         setLoaded(true);
         onReady?.(duration);
