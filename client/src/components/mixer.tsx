@@ -265,50 +265,41 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
               <div key={file.id}>
                 {stemSettings[file.id]?.extractVocals && (
                   <div className="bg-zinc-900/80 rounded-lg p-3 mb-3">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center mb-2">
                       <div className="flex items-center gap-2">
                         <Mic className="h-4 w-4 text-zinc-400" />
                         <span className="text-zinc-300 text-sm truncate max-w-[80px]">Vocal</span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleMute(`${file.id}-vocals`)}
-                        className="h-7 w-7 p-0 rounded-md text-zinc-400 hover:text-white"
+                    </div>
+                    
+                    {/* Main container with waveform and controls side by side */}
+                    <div className="flex items-stretch gap-2">
+                      {/* Waveform container */}
+                      <div 
+                        className="flex-grow relative" 
+                        style={{ opacity: muteStates[`${file.id}-vocals`] ? 0.5 : 1 }}
                       >
-                        {muteStates[`${file.id}-vocals`] ? 
-                          <VolumeX className="h-4 w-4" /> : 
-                          <Volume2 className="h-4 w-4" />
-                        }
-                      </Button>
-                    </div>
-                    
-                    <div 
-                      className="relative" 
-                      style={{ opacity: muteStates[`${file.id}-vocals`] ? 0.5 : 1 }}
-                    >
-                      <Waveform 
-                        audioFile={file}
-                        playing={isPlaying && !muteStates[`${file.id}-vocals`]}
-                        onReady={handleWaveformReady}
-                        waveColor="#5D5FEF"
-                        progressColor="transparent" 
-                        height={50}
-                        hideControls
-                        currentTime={currentTime}
-                        timeOffset={timeOffsets[`${file.id}-vocals`] || 0}
-                      />
-                    </div>
-                    
-                    {/* Volume controls and alignment buttons in vertical layout */}
-                    <div className="flex flex-col items-end mt-1 gap-1">
-                      {/* Volume controls */}
-                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
+                        <Waveform 
+                          audioFile={file}
+                          playing={isPlaying && !muteStates[`${file.id}-vocals`]}
+                          onReady={handleWaveformReady}
+                          waveColor="#5D5FEF"
+                          progressColor="transparent" 
+                          height={50}
+                          hideControls
+                          currentTime={currentTime}
+                          timeOffset={timeOffsets[`${file.id}-vocals`] || 0}
+                        />
+                      </div>
+                      
+                      {/* Controls stacked vertically on the right */}
+                      <div className="w-16 flex flex-col items-center justify-between gap-1.5">
+                        {/* Mute button at top */}
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleMute(`${file.id}-vocals`)}
-                          className="p-0 h-8 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                          className="h-8 w-8 p-0 bg-zinc-800 hover:bg-zinc-700 rounded-md"
                         >
                           {muteStates[`${file.id}-vocals`] ? 
                             <VolumeX className="h-4 w-4 text-zinc-400" /> : 
@@ -316,31 +307,28 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           }
                         </Button>
                         
-                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 font-mono text-white font-bold">
+                        {/* Volume display */}
+                        <div className="w-12 h-12 bg-indigo-600 rounded-md flex items-center justify-center font-mono text-white font-bold">
                           {Math.round(volumes[`${file.id}-vocals`] * 100)}
                         </div>
-                      </div>
-                      
-                      {/* Track alignment controls in separate row */}
-                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
-                        <div className="flex-grow flex items-center justify-between px-2 h-8">
+                        
+                        {/* Track alignment buttons at bottom */}
+                        <div className="w-full flex justify-between">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => moveTrackBackward(`${file.id}-vocals`)}
-                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
+                            className="p-0 h-8 w-8 bg-zinc-800 hover:bg-zinc-700 rounded-md"
                             title="Shift track backward by one bar"
                           >
                             <ChevronLeft className="h-4 w-4 text-zinc-300" />
                           </Button>
                           
-                          <span className="text-xs text-zinc-400">Align Track</span>
-                          
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => moveTrackForward(`${file.id}-vocals`)}
-                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
+                            className="p-0 h-8 w-8 bg-zinc-800 hover:bg-zinc-700 rounded-md"
                             title="Shift track forward by one bar"
                           >
                             <ChevronRight className="h-4 w-4 text-zinc-300" />
@@ -353,50 +341,41 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                 
                 {stemSettings[file.id]?.extractInstrumental && (
                   <div className="bg-zinc-900/80 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center mb-2">
                       <div className="flex items-center gap-2">
                         <Music className="h-4 w-4 text-zinc-400" />
                         <span className="text-zinc-300 text-sm truncate max-w-[80px]">Instrumental</span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleMute(`${file.id}-instrumental`)}
-                        className="h-7 w-7 p-0 rounded-md text-zinc-400 hover:text-white"
+                    </div>
+                    
+                    {/* Main container with waveform and controls side by side */}
+                    <div className="flex items-stretch gap-2">
+                      {/* Waveform container */}
+                      <div 
+                        className="flex-grow relative" 
+                        style={{ opacity: muteStates[`${file.id}-instrumental`] ? 0.5 : 1 }}
                       >
-                        {muteStates[`${file.id}-instrumental`] ? 
-                          <VolumeX className="h-4 w-4" /> : 
-                          <Volume2 className="h-4 w-4" />
-                        }
-                      </Button>
-                    </div>
-                    
-                    <div 
-                      className="relative" 
-                      style={{ opacity: muteStates[`${file.id}-instrumental`] ? 0.5 : 1 }}
-                    >
-                      <Waveform 
-                        audioFile={file}
-                        playing={isPlaying && !muteStates[`${file.id}-instrumental`]}
-                        onReady={handleWaveformReady}
-                        waveColor="#5D5FEF"
-                        progressColor="transparent"
-                        height={50}
-                        hideControls
-                        currentTime={currentTime}
-                        timeOffset={timeOffsets[`${file.id}-instrumental`] || 0}
-                      />
-                    </div>
-                    
-                    {/* Volume controls and alignment buttons in vertical layout */}
-                    <div className="flex flex-col items-end mt-1 gap-1">
-                      {/* Volume controls */}
-                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
+                        <Waveform 
+                          audioFile={file}
+                          playing={isPlaying && !muteStates[`${file.id}-instrumental`]}
+                          onReady={handleWaveformReady}
+                          waveColor="#5D5FEF"
+                          progressColor="transparent"
+                          height={50}
+                          hideControls
+                          currentTime={currentTime}
+                          timeOffset={timeOffsets[`${file.id}-instrumental`] || 0}
+                        />
+                      </div>
+                      
+                      {/* Controls stacked vertically on the right */}
+                      <div className="w-16 flex flex-col items-center justify-between gap-1.5">
+                        {/* Mute button at top */}
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => toggleMute(`${file.id}-instrumental`)}
-                          className="p-0 h-8 w-8 rounded-none bg-zinc-800 hover:bg-zinc-700 border-none"
+                          className="h-8 w-8 p-0 bg-zinc-800 hover:bg-zinc-700 rounded-md"
                         >
                           {muteStates[`${file.id}-instrumental`] ? 
                             <VolumeX className="h-4 w-4 text-zinc-400" /> : 
@@ -404,31 +383,28 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           }
                         </Button>
                         
-                        <div className="flex-grow flex items-center justify-center h-8 bg-indigo-600 font-mono text-white font-bold">
+                        {/* Volume display */}
+                        <div className="w-12 h-12 bg-indigo-600 rounded-md flex items-center justify-center font-mono text-white font-bold">
                           {Math.round(volumes[`${file.id}-instrumental`] * 100)}
                         </div>
-                      </div>
-                      
-                      {/* Track alignment controls in separate row */}
-                      <div className="bg-zinc-800 rounded overflow-hidden flex items-stretch w-full max-w-[150px]">
-                        <div className="flex-grow flex items-center justify-between px-2 h-8">
+                        
+                        {/* Track alignment buttons at bottom */}
+                        <div className="w-full flex justify-between">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => moveTrackBackward(`${file.id}-instrumental`)}
-                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
+                            className="p-0 h-8 w-8 bg-zinc-800 hover:bg-zinc-700 rounded-md"
                             title="Shift track backward by one bar"
                           >
                             <ChevronLeft className="h-4 w-4 text-zinc-300" />
                           </Button>
                           
-                          <span className="text-xs text-zinc-400">Align Track</span>
-                          
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => moveTrackForward(`${file.id}-instrumental`)}
-                            className="p-0 h-7 w-7 rounded-full bg-zinc-700 hover:bg-zinc-600 border-none"
+                            className="p-0 h-8 w-8 bg-zinc-800 hover:bg-zinc-700 rounded-md"
                             title="Shift track forward by one bar"
                           >
                             <ChevronRight className="h-4 w-4 text-zinc-300" />
