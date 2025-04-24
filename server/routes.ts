@@ -41,11 +41,23 @@ export async function registerRoutes(app: Express) {
 
       console.log("Final BPM value:", bpm);
 
+      // Simulate key detection (in a real app, this would be a proper music analysis)
+      // Generate a mock musical key based on BPM
+      let key = null;
+      if (bpm) {
+        const keys = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        const modes = ["Major", "Minor"];
+        const keyIndex = Math.floor((bpm % 12));
+        const modeIndex = Math.floor(bpm / 100) % 2;
+        key = `${keys[keyIndex]} ${modes[modeIndex]}`;
+      }
+      
       // Save the audio file data
       const audioFile = await storage.saveAudioFile({
         filename: file.originalname,
         filepath: file.path,
         bpm,
+        key,
         duration: 0, // TODO: Calculate duration
       });
 

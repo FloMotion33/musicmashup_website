@@ -8,6 +8,7 @@ export const audioFiles = pgTable("audio_files", {
   filepath: text("filepath").notNull(),
   bpm: integer("bpm"),
   duration: integer("duration"),
+  key: text("key"),
   waveformData: jsonb("waveform_data").$type<number[]>(),
 });
 

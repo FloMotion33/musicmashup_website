@@ -31,6 +31,7 @@ export class MemStorage implements IStorage {
       filepath: file.filepath,
       bpm: file.bpm || null,
       duration: file.duration || null,
+      key: file.key || null,
       waveformData: []
     };
     this.audioFiles.set(id, audioFile);
