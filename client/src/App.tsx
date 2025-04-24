@@ -11,12 +11,16 @@ import About from "@/pages/about";
 import Trending from "@/pages/trending";
 import NavBar from "@/components/nav-bar";
 import Login from "@/pages/login";
+import BpmDetection from "@/pages/bpm-detection";
+import VocalRemover from "@/pages/vocal-remover";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/products" component={Products} />
+      <Route path="/products/bpm" component={BpmDetection} />
+      <Route path="/products/vocal-remover" component={VocalRemover} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/help" component={Help} />
       <Route path="/about" component={About} />
