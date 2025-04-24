@@ -17,7 +17,7 @@ export default function NavBar() {
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">mm</span>
             </div>
-            <span className="font-bold text-lg">musicmashup.io</span>
+            <span className="font-bold text-lg">Mashup Maker</span>
           </a>
         </Link>
 
@@ -48,7 +48,7 @@ export default function NavBar() {
                 </Link>
               </DropdownMenuContent>
             </DropdownMenu>
-
+            
             <Link href="/pricing">
               <a className="text-sm font-medium transition-colors hover:text-primary">Pricing</a>
             </Link>
