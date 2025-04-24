@@ -91,9 +91,16 @@ export default function VocalRemover() {
                 ) : (
                   <div className="space-y-4">
                     <div className="bg-zinc-900 rounded-lg p-4">
-                      <div className="font-medium text-sm mb-2 flex items-center">
-                        <Music className="h-4 w-4 mr-2 text-indigo-400" />
-                        {audioFiles[0].filename}
+                      <div className="space-y-1 mb-2">
+                        <div className="font-medium text-sm flex items-center">
+                          <Music className="h-4 w-4 mr-2 text-indigo-400" />
+                          {audioFiles[0].filename}
+                        </div>
+                        {audioFiles[0].key && (
+                          <div className="text-xs px-2 py-1 bg-violet-500/20 text-violet-300 rounded w-fit">
+                            Key: {audioFiles[0].key}
+                          </div>
+                        )}
                       </div>
                       <Waveform 
                         audioFile={audioFiles[0]}
@@ -145,9 +152,16 @@ export default function VocalRemover() {
                     {/* Vocals track */}
                     <div className="bg-zinc-900 rounded-lg p-4">
                       <div className="font-medium text-sm mb-2 flex items-center justify-between">
-                        <div className="flex items-center">
-                          <Mic className="h-4 w-4 mr-2 text-indigo-400" />
-                          Vocals
+                        <div className="flex flex-col">
+                          <div className="flex items-center">
+                            <Mic className="h-4 w-4 mr-2 text-indigo-400" />
+                            Vocals
+                          </div>
+                          {audioFiles[0].key && (
+                            <div className="text-xs px-2 py-1 bg-violet-500/20 text-violet-300 rounded mt-1 w-fit">
+                              Key: {audioFiles[0].key}
+                            </div>
+                          )}
                         </div>
                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
                           <Download className="h-4 w-4" />
@@ -162,9 +176,16 @@ export default function VocalRemover() {
                     {/* Instrumental track */}
                     <div className="bg-zinc-900 rounded-lg p-4">
                       <div className="font-medium text-sm mb-2 flex items-center justify-between">
-                        <div className="flex items-center">
-                          <Music className="h-4 w-4 mr-2 text-indigo-400" />
-                          Instrumental
+                        <div className="flex flex-col">
+                          <div className="flex items-center">
+                            <Music className="h-4 w-4 mr-2 text-indigo-400" />
+                            Instrumental
+                          </div>
+                          {audioFiles[0].key && (
+                            <div className="text-xs px-2 py-1 bg-violet-500/20 text-violet-300 rounded mt-1 w-fit">
+                              Key: {audioFiles[0].key}
+                            </div>
+                          )}
                         </div>
                         <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
                           <Download className="h-4 w-4" />
