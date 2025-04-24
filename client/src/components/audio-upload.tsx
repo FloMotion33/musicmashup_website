@@ -90,7 +90,7 @@ export default function AudioUpload({ onUpload }: AudioUploadProps) {
           <div className="space-y-2">
             <Loader2 className="h-4 w-4 animate-spin mx-auto" />
             <p className="text-sm text-muted-foreground">
-              Uploading {uploadingFiles.size} file(s)...
+              Uploading {totalFiles.length} file(s)...
             </p>
           </div>
         ) : (
