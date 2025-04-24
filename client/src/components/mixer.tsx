@@ -293,7 +293,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                       </div>
 
                       {/* Controls stacked vertically on the right */}
-                      <div className="w-16 flex flex-col items-center justify-between gap-1.5">
+                      <div className="w-20 flex flex-col items-center justify-between gap-2">
                         {/* Mute button at top */}
                         <Button
                           variant="ghost"
@@ -307,13 +307,30 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           }
                         </Button>
 
-                        {/* Volume display */}
-                        <div className="w-12 h-12 bg-indigo-600 rounded-md flex items-center justify-center font-mono text-white font-bold">
-                          {Math.round(volumes[`${file.id}-vocals`] * 100)}
+                        {/* Volume display and slider */}
+                        <div className="flex flex-col items-center w-full">
+                          <div className="w-16 h-10 bg-indigo-600 rounded-md flex items-center justify-center font-mono text-white font-bold mb-1">
+                            {Math.round(volumes[`${file.id}-vocals`] * 100)}
+                          </div>
+                          
+                          {/* Interactive volume slider */}
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            value={Math.round(volumes[`${file.id}-vocals`] * 100)} 
+                            onChange={(e) => updateVolume(`${file.id}-vocals`, Number(e.target.value) / 100)}
+                            className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+                            style={{
+                              accentColor: '#5D5FEF',
+                              WebkitAppearance: 'none',
+                              outline: 'none'
+                            }}
+                          />
                         </div>
 
                         {/* Track alignment buttons at bottom */}
-                        <div className="w-full flex justify-between">
+                        <div className="w-full flex justify-center gap-2 mt-1">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -369,7 +386,7 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                       </div>
 
                       {/* Controls stacked vertically on the right */}
-                      <div className="w-16 flex flex-col items-center justify-between gap-1.5">
+                      <div className="w-20 flex flex-col items-center justify-between gap-2">
                         {/* Mute button at top */}
                         <Button
                           variant="ghost"
@@ -383,13 +400,30 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
                           }
                         </Button>
 
-                        {/* Volume display */}
-                        <div className="w-12 h-12 bg-indigo-600 rounded-md flex items-center justify-center font-mono text-white font-bold">
-                          {Math.round(volumes[`${file.id}-instrumental`] * 100)}
+                        {/* Volume display and slider */}
+                        <div className="flex flex-col items-center w-full">
+                          <div className="w-16 h-10 bg-indigo-600 rounded-md flex items-center justify-center font-mono text-white font-bold mb-1">
+                            {Math.round(volumes[`${file.id}-instrumental`] * 100)}
+                          </div>
+                          
+                          {/* Interactive volume slider */}
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            value={Math.round(volumes[`${file.id}-instrumental`] * 100)} 
+                            onChange={(e) => updateVolume(`${file.id}-instrumental`, Number(e.target.value) / 100)}
+                            className="w-full h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer"
+                            style={{
+                              accentColor: '#5D5FEF',
+                              WebkitAppearance: 'none',
+                              outline: 'none'
+                            }}
+                          />
                         </div>
 
                         {/* Track alignment buttons at bottom */}
-                        <div className="w-full flex justify-between">
+                        <div className="w-full flex justify-center gap-2 mt-1">
                           <Button
                             variant="ghost"
                             size="sm"
