@@ -43,8 +43,11 @@ export default function AudioUpload({ onUpload }: AudioUploadProps) {
     }
   });
 
+  const [totalFiles, setTotalFiles] = useState<File[]>([]);
+  
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const newUploadingFiles = new Set(uploadingFiles);
+    setTotalFiles(acceptedFiles);
 
     for (const file of acceptedFiles) {
       newUploadingFiles.add(file.name);
@@ -87,7 +90,7 @@ export default function AudioUpload({ onUpload }: AudioUploadProps) {
           <div className="space-y-2">
             <Loader2 className="h-4 w-4 animate-spin mx-auto" />
             <p className="text-sm text-muted-foreground">
-              Uploading {uploadingFiles.size} file(s)...
+              Uploading {acceptedFiles.length} file(s)...
             </p>
           </div>
         ) : (
