@@ -38,7 +38,7 @@ export default function NavBar() {
                 </Link>
                 <Link href="/products/bpm">
                   <DropdownMenuItem className="cursor-pointer">
-                    BPM Detection
+                    BPM and Key Detection
                   </DropdownMenuItem>
                 </Link>
                 <Link href="/products/vocal-remover">

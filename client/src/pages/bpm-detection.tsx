@@ -25,9 +25,9 @@ export default function BpmDetection() {
       <div className="flex flex-col items-center justify-center max-w-3xl mx-auto">
         <Card className="w-full bg-zinc-950 border-zinc-800 text-white">
           <CardHeader className="pb-4">
-            <CardTitle className="text-2xl font-bold">BPM Detection</CardTitle>
+            <CardTitle className="text-2xl font-bold">BPM and Key Detection</CardTitle>
             <CardDescription className="text-zinc-400">
-              Upload any audio file to automatically detect its beats per minute (BPM)
+              Upload any audio file to automatically detect its beats per minute (BPM) and musical key
             </CardDescription>
           </CardHeader>
           
@@ -60,9 +60,14 @@ export default function BpmDetection() {
                         </div>
                         
                         <div className="text-right">
-                          <p className="text-2xl font-mono font-bold text-indigo-400">
-                            {file.bpm ? `${file.bpm} BPM` : "Unknown BPM"}
-                          </p>
+                          <div>
+                            <p className="text-2xl font-mono font-bold text-indigo-400">
+                              {file.bpm ? `${file.bpm} BPM` : "Unknown BPM"}
+                            </p>
+                            <p className="text-lg font-mono font-medium text-purple-400">
+                              {file.key ? file.key : "Analyzing key..."}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))}
