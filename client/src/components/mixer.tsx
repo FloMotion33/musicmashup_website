@@ -216,7 +216,11 @@ export default function Mixer({ audioFiles, stemSettings }: MixerProps) {
       ref={containerRef}
     >
       {/* Full-width background animation */}
-      <AnimatedBackground isPlaying={isPlaying} intensity={0.7} />
+      <AnimatedBackground 
+        isPlaying={isPlaying} 
+        intensity={0.7}
+        audioElements={Array.from(document.querySelectorAll('audio'))}
+      />
       
       <div className="p-3 space-y-4 relative z-10">
         {/* Play button and time display */}
